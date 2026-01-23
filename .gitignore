@@ -1,0 +1,42 @@
+# Python bytecode / cache
+__pycache__/
+*.py[oc]
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Packaging / build artifacts
+build/
+dist/
+wheels/
+.eggs/
+*.egg-info/
+*.egg-info
+
+# Test / coverage artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+.tox/
+.nox/
+
+# Type checker / linter caches
+.mypy_cache/
+.ruff_cache/
+.pyright/
+
+# Logs
+*.log
+
+# Local env/config
+.env
+.env.*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
