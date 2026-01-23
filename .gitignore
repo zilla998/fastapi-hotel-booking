@@ -34,7 +34,7 @@ htmlcov/
 
 # Local env/config
 .env
-.env.*
+# .env.*
 
 # IDE / OS
 .idea/
