@@ -1,10 +1,9 @@
-from hmac import new
-from tkinter.constants import E
-
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from exceptions.users import UserAlreadyExists
+from src.exceptions.users import UserNotFound
 from src.database import get_async_session
 from src.models.users import UsersOrm
 from src.schemas.users import UserCreateSchema, UserReadSchema
@@ -44,10 +43,7 @@ async def get_user(id: int, session: AsyncSession = Depends(get_async_session)):
     if (
         user is None
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
-        raise HTTPException(
-            status_code=404,
-            detail=f"Пользователь с id: {id} не найден",
-        )
+        raise UserNotFound(id)
     return user
 
 
@@ -64,10 +60,7 @@ async def add_user(
     existing_user = result.scalar_one_or_none()
 
     if existing_user is not None:  # Проверяем существует ли пользователь с таким email
-        raise HTTPException(
-            status_code=409,
-            detail="Пользователь с таким email уже существует",
-        )
+        raise UserAlreadyExists()
 
     # Создаем новый ORM-объект
     new_user = UsersOrm(email=str(user.email), hashed_password=user.password)
@@ -101,16 +94,12 @@ async def add_user(
 @router.delete(
     "/{id}",
     summary="Удаление пользователя",
-    status_code=204,
 )
 async def delete_user(id: int, session: AsyncSession = Depends(get_async_session)):
     result = await session.execute(select(UsersOrm).where(UsersOrm.id == id))
     user = result.scalar_one_or_none()
-
     if user is None:
-        raise HTTPException(
-            status_code=404, detail=f"Пользователь с id: {id} не найден"
-        )
+        raise UserNotFound(id)
 
     await session.delete(user)
     await session.commit()
