@@ -6,7 +6,8 @@ from fastapi import FastAPI
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.api.routers.users import router as users_router
+from src.api.routers.users import router as users_router # импортируем роутер users
+from src.api.routers.hotels import router as hotels_router # импортируем роутер hotels
 
 # print(settings.DB_URL)
 app = FastAPI()
@@ -23,6 +24,7 @@ async def say_hello(name: str):
 
 
 app.include_router(users_router)  # Подключаем роутер users
+app.include_router(hotels_router) # Подключаем роутер hotels
 
 
 if __name__ == "__main__":

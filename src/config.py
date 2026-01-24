@@ -1,10 +1,10 @@
 from pathlib import Path
 
+from authx import AuthX, AuthXConfig
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-
     DB_NAME: str
     DB_PORT: int
     DB_USER: str
@@ -23,3 +23,12 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+# AuthX JWT Token auth
+config = AuthXConfig()
+config.JWT_SECRET_KEY = "SECRET_KEY"
+config.JWT_ACCESS_COOKIE_NAME = "my_access_token"
+config.JWT_TOKEN_LOCATION = ["cookies"]
+
+security = AuthX(config=config)

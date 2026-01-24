@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
+from pydantic import EmailStr
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from exceptions.users import UserAlreadyExists
-from src.exceptions.users import UserNotFound
-from src.database import get_async_session
+from src.config import config as authx_config
+from src.config import security
+from src.database import SessionDep
+from src.exceptions.users import UserAlreadyExists, UserNotFound
 from src.models.users import UsersOrm
-from src.schemas.users import UserCreateSchema, UserReadSchema
+from src.schemas.users import UserCreateSchema, UserLoginSchema, UserReadSchema
 
 router = APIRouter(
     prefix="/users", tags=["Пользователи"]
@@ -17,10 +18,12 @@ router = APIRouter(
     "",  # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
     summary="Получение списка пользователей",
     response_model=list[UserReadSchema],
+    dependencies=[Depends(security.access_token_required)],
     status_code=200,
 )
-async def get_users(session: AsyncSession = Depends(get_async_session)):
-    result = await session.execute(select(UsersOrm))
+async def get_users(session: SessionDep):
+    query = select(UsersOrm)
+    result = await session.execute(query)
     users = (
         result.scalars().all()
     )  # scalars это что то типа objects в Django (User.objects.all())
@@ -33,9 +36,10 @@ async def get_users(session: AsyncSession = Depends(get_async_session)):
     response_model=UserReadSchema,  # Указываем схему, по которой будет возвращаться наш запрос
     status_code=200,
 )
-async def get_user(id: int, session: AsyncSession = Depends(get_async_session)):
+async def get_user(id: int, session: SessionDep):
+    query = select(UsersOrm).where(UsersOrm.id == id)
     result = await session.execute(
-        select(UsersOrm).where(UsersOrm.id == id)
+        query
     )  # Отправляем запрос в БД делает выборку из таблицы UsersOrm с фильтром по id
     user = (
         result.scalar_one_or_none()
@@ -54,9 +58,10 @@ async def get_user(id: int, session: AsyncSession = Depends(get_async_session)):
     status_code=201,
 )
 async def add_user(
-    user: UserCreateSchema, session: AsyncSession = Depends(get_async_session)
+    user: UserCreateSchema, session: SessionDep
 ):  # session: Получаем готовую сессию без ручного создания и для управления ей (открытие/закрытие сессии)
-    result = await session.execute(select(UsersOrm).where(UsersOrm.email == user.email))
+    query = select(UsersOrm).where(UsersOrm.email == user.email)
+    result = await session.execute(query)
     existing_user = result.scalar_one_or_none()
 
     if existing_user is not None:  # Проверяем существует ли пользователь с таким email
@@ -91,12 +96,44 @@ async def add_user(
     return new_user
 
 
+@router.post(
+    "/login",
+    summary="Вход пользователя",
+)
+async def login(credentials: UserLoginSchema, response: Response, session: SessionDep):
+    query = select(UsersOrm).where(
+        (UsersOrm.email == credentials.email)
+        & (UsersOrm.hashed_password == credentials.password)
+    )
+    result = await session.execute(query)
+    user = result.scalar_one_or_none()
+    print(user.id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=404, detail="Пользователь с такими данными не найден"
+        )
+
+    token = security.create_access_token(uid=str(user.id))
+    response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, token)
+    return {"access_token": token}
+
+
+@router.get(
+    "/protected",
+    dependencies=[Depends(security.access_token_required)],
+)
+async def protected():
+    return {"data": "secret"}
+
+
 @router.delete(
     "/{id}",
     summary="Удаление пользователя",
 )
-async def delete_user(id: int, session: AsyncSession = Depends(get_async_session)):
-    result = await session.execute(select(UsersOrm).where(UsersOrm.id == id))
+async def delete_user(id: int, session: SessionDep):
+    query = select(UsersOrm).where(UsersOrm.id == id)
+    result = await session.execute(query)
     user = result.scalar_one_or_none()
     if user is None:
         raise UserNotFound(id)
