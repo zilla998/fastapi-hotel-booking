@@ -26,3 +26,11 @@ class UserCreateSchema(UserSchema):
 # Схема авторизации пользователя
 class UserLoginSchema(UserSchema):
     pass
+
+
+class UserChangePasswordScheme(BaseModel):
+    current_password: str = Field(min_length=8, max_length=64)
+    new_password: str = Field(min_length=8, max_length=64)
+    confirm_password: str = Field(min_length=8, max_length=64)
+
+    model_config = ConfigDict(extra="forbid")

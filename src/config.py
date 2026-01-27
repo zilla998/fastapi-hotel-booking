@@ -1,3 +1,4 @@
+from datetime import timedelta
 from pathlib import Path
 
 from authx import AuthX, AuthXConfig
@@ -28,7 +29,14 @@ settings = Settings()
 # AuthX JWT Token auth
 config = AuthXConfig()
 config.JWT_SECRET_KEY = "SECRET_KEY"
-config.JWT_ACCESS_COOKIE_NAME = "my_access_token"
+
 config.JWT_TOKEN_LOCATION = ["cookies"]
+config.JWT_ACCESS_COOKIE_NAME = "my_access_token"
+config.JWT_REFRESH_COOKIE_NAME = "my_refresh_token"
+
+config.JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
+config.JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
+
+config.JWT_COOKIE_CSRF_PROTECT = False  # Отключается только для разработки
 
 security = AuthX(config=config)
