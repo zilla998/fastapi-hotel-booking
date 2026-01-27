@@ -45,7 +45,7 @@ async def get_user(id: int, session: SessionDep):
         result.scalar_one_or_none()
     )  # Возвращает объект из результата. Если объекта нет, возвращает None
     if (
-            user is None
+        user is None
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
         raise UserNotFound(id)
     return user
@@ -59,7 +59,7 @@ async def get_user(id: int, session: SessionDep):
     status_code=201,
 )
 async def add_user(
-        user: UserCreateSchema, session: SessionDep
+    user: UserCreateSchema, session: SessionDep
 ):  # session: Получаем готовую сессию без ручного создания и для управления ей (открытие/закрытие сессии)
     query = select(UsersOrm).where(UsersOrm.email == user.email)
     result = await session.execute(query)
@@ -97,6 +97,7 @@ async def add_user(
     return new_user
 
 
+# Вход пользователя в аккаунт
 @router.post(
     "/login",
     summary="Вход пользователя",
@@ -108,7 +109,6 @@ async def login(credentials: UserLoginSchema, response: Response, session: Sessi
     )
     result = await session.execute(query)
     user = result.scalar_one_or_none()
-    print(user.id)
 
     if user is None:
         raise HTTPException(
@@ -128,14 +128,17 @@ async def protected():
     return {"data": "secret"}
 
 
+# Выход пользователя из аккаунта
 @router.post(
     "/logout",
     summary="Выход пользователя",
 )
-async def user_logout(session: SessionDep):
-    return ...
+async def user_logout(response: Response, session: SessionDep):
+    response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
+    return {"logout": True}
 
 
+# Удаление пользователя
 @router.delete(
     "/{id}",
     summary="Удаление пользователя",
