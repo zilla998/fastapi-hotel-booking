@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, HTTPException, Response
-from pydantic import EmailStr
 from sqlalchemy import select
 
 from src.config import config as authx_config
@@ -15,7 +14,8 @@ router = APIRouter(
 
 
 @router.get(
-    "",  # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
+    "",
+    # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
     summary="Получение списка пользователей",
     response_model=list[UserReadSchema],
     dependencies=[Depends(security.access_token_required)],
@@ -45,20 +45,21 @@ async def get_user(id: int, session: SessionDep):
         result.scalar_one_or_none()
     )  # Возвращает объект из результата. Если объекта нет, возвращает None
     if (
-        user is None
+            user is None
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
         raise UserNotFound(id)
     return user
 
 
 @router.post(
-    "",  # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
+    "",
+    # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
     summary="Создание пользователя",
     response_model=UserReadSchema,  # Указываем схему ответа без пароля для безопасности
     status_code=201,
 )
 async def add_user(
-    user: UserCreateSchema, session: SessionDep
+        user: UserCreateSchema, session: SessionDep
 ):  # session: Получаем готовую сессию без ручного создания и для управления ей (открытие/закрытие сессии)
     query = select(UsersOrm).where(UsersOrm.email == user.email)
     result = await session.execute(query)
@@ -125,6 +126,14 @@ async def login(credentials: UserLoginSchema, response: Response, session: Sessi
 )
 async def protected():
     return {"data": "secret"}
+
+
+@router.post(
+    "/logout",
+    summary="Выход пользователя",
+)
+async def user_logout(session: SessionDep):
+    return ...
 
 
 @router.delete(
