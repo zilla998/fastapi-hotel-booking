@@ -11,7 +11,7 @@ class UserReadSchema(BaseModel):
 # Схема пользователя
 class UserSchema(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=8, max_length=64)
+    password: str
 
     model_config = ConfigDict(
         extra="forbid"

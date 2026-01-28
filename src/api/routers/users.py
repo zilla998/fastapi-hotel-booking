@@ -2,13 +2,16 @@ from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 
-from exeptions import ObjectIsAlreadyExistsException
-from schemas.users import UserAddSchema
+from exeptions import (
+    ObjectEmailOrPasswordNotValidException,
+    ObjectIsAlreadyExistsException,
+)
+from schemas.users import UserAddSchema, UserSchema
 from services.auth import AuthService
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
-from src.exceptions.users import UserAlreadyExists, UserNotFound
+from src.exceptions.users import UserNotFound
 from src.models.users import UsersOrm
 from src.repositories.users import UsersRepository
 from src.schemas.users import (
@@ -86,7 +89,6 @@ async def get_user(id: int, session: SessionDep):
 
 @router.post(
     "/register",
-    # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
     summary="Создание пользователя",
     response_model=UserReadSchema,  # Указываем схему ответа без пароля для безопасности
     status_code=201,
@@ -94,7 +96,7 @@ async def get_user(id: int, session: SessionDep):
 async def register_user(
     user: UserCreateSchema, session: SessionDep, response: Response
 ):
-    # 1. Захешировать пароль пользователя
+    # 1. За хешировать пароль пользователя
     hashed_password = AuthService().get_password_hash(user.password)
     # 2. Добавить пользователя в БД
     user_model_data = UserAddSchema(email=user.email, hashed_password=hashed_password)
@@ -102,7 +104,7 @@ async def register_user(
         new_user = await UsersRepository(session).add(user_model_data)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
-            detail="Пользователь с такой почтой уже существует", status_code=409
+            status_code=409, detail="Пользователь с такой почтой уже существует"
         )
     await session.commit()
     # 3. Добавить access и refresh токены
@@ -121,26 +123,21 @@ async def register_user(
     "/login",
     summary="Вход пользователя",
 )
-async def user_login(
-    credentials: UserLoginSchema, response: Response, session: SessionDep
-):
-    query = select(UsersOrm).where(
-        (UsersOrm.email == credentials.email)
-        & (UsersOrm.hashed_password == credentials.password)
-    )
-    result = await session.execute(query)
-    user = result.scalar_one_or_none()
+async def user_login(user: UserLoginSchema, response: Response, session: SessionDep):
+    try:
+        new_user = await UsersRepository(session).login(user.email, user.password)
+    except ObjectEmailOrPasswordNotValidException:
+        raise HTTPException(
+            status_code=404, detail="Пользователя с такими данными не существует"
+        )
 
-    if user is None:
-        raise UserNotFound(name="email")
-
-    access_token = security.create_access_token(uid=str(user.id))
-    refresh_token = security.create_refresh_token(uid=str(user.id))
+    access_token = AuthService.create_access_token(new_user.id)
+    refresh_token = AuthService.create_refresh_token(new_user.id)
 
     response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
     response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
 
-    return {"access_token": access_token, "refresh_token": refresh_token}
+    return {"success": True}
 
 
 # Выход пользователя из аккаунта

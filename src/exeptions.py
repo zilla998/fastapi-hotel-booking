@@ -7,3 +7,7 @@ class BookingException(Exception):
 
 class ObjectIsAlreadyExistsException(BookingException):
     detail = "Объект уже существует"
+
+
+class ObjectEmailOrPasswordNotValidException(BookingException):
+    detail = "Неверные почта или пароль"

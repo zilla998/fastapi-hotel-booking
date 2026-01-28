@@ -1,10 +1,15 @@
-from asyncpg import UniqueViolationError
-from pydantic import BaseModel
-from sqlalchemy import insert, select
-from sqlalchemy.exc import IntegrityError
-from starlette.exceptions import HTTPException
+from http.client import HTTPException
 
-from exeptions import ObjectIsAlreadyExistsException
+from pwdlib.exceptions import UnknownHashError
+from pydantic import BaseModel, EmailStr
+from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError, NoResultFound
+
+from exeptions import (
+    ObjectEmailOrPasswordNotValidException,
+    ObjectIsAlreadyExistsException,
+)
+from services.auth import AuthService
 
 
 class BaseRepository:
@@ -32,8 +37,17 @@ class BaseRepository:
     async def add(self, data: BaseModel):
         try:
             query = insert(self.model).values(**data.model_dump()).returning(self.model)
-
             model = await self.session.execute(query)
             return model.scalars().one()
         except IntegrityError:
             raise ObjectIsAlreadyExistsException
+
+    async def login(self, email: EmailStr, password: str):
+        query = select(self.model).where((self.model.email == str(email)))
+        model = await self.session.execute(query)
+        user = model.scalar_one_or_none()
+        if not user or not AuthService().verify_password(
+            password, user.hashed_password
+        ):
+            raise ObjectEmailOrPasswordNotValidException
+        return user

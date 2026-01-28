@@ -13,11 +13,13 @@ class AuthService:
         return self.password_hash.hash(password)
 
     @staticmethod
-    def create_access_token(id: int):
-        access_token = security.create_access_token(uid=str(id), data={"user_id": id})
+    def create_access_token(user_id: int):
+        access_token = security.create_access_token(
+            uid=str(user_id), data={"user_id": user_id}
+        )
         return access_token
 
     @staticmethod
-    def create_refresh_token(id: int):
-        refresh_token = security.create_refresh_token(uid=str(id))
+    def create_refresh_token(user_id: int):
+        refresh_token = security.create_refresh_token(uid=str(user_id))
         return refresh_token
