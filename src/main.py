@@ -6,10 +6,9 @@ from fastapi import FastAPI
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.api.routers.users import router as users_router # импортируем роутер users
-from src.api.routers.hotels import router as hotels_router # импортируем роутер hotels
+from src.api.routers.hotels import router as hotels_router  # импортируем роутер hotels
+from src.api.routers.users import router as users_router  # импортируем роутер users
 
-# print(settings.DB_URL)
 app = FastAPI()
 
 

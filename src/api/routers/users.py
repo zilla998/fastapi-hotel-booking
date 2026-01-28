@@ -2,11 +2,15 @@ from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 
+from exeptions import ObjectIsAlreadyExistsException
+from schemas.users import UserAddSchema
+from services.auth import AuthService
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
 from src.exceptions.users import UserAlreadyExists, UserNotFound
 from src.models.users import UsersOrm
+from src.repositories.users import UsersRepository
 from src.schemas.users import (
     UserChangePasswordScheme,
     UserCreateSchema,
@@ -32,8 +36,7 @@ async def get_current_user(request: Request, session: SessionDep):
     payload = security.verify_token(token)
     user_id = payload.sub
 
-    user = await session.get(UsersOrm, user_id)
-    return user
+    return user_id
 
 
 @router.get(
@@ -90,46 +93,21 @@ async def get_user(id: int, session: SessionDep):
 )
 async def register_user(
     user: UserCreateSchema, session: SessionDep, response: Response
-):  # session: Получаем готовую сессию без ручного создания и для управления ей (открытие/закрытие сессии)
-    query = select(UsersOrm).where(UsersOrm.email == user.email)
-    result = await session.execute(query)
-    existing_user = result.scalar_one_or_none()
-
-    if existing_user is not None:  # Проверяем существует ли пользователь с таким email
-        raise UserAlreadyExists(name="email")
-
-    if user.password != user.confirm_password:
-        raise HTTPException(status_code=400, detail="Пароли не совпадают")
-
-    # Создаем новый ORM-объект
-    new_user = UsersOrm(email=str(user.email), hashed_password=user.password)
-
-    # Записываем его в БД
-    """
-    добавляет объект new_user в текущую сессию SQLAlchemy и помечает его как “pending” (готов к вставке).
-    Сам INSERT в БД ещё не выполняется.
-    """
-    session.add(new_user)
-    """
-    фиксирует транзакцию:
-    перед этим SQLAlchemy выполнит нужные SQL (INSERT и т. п.) и затем сделает COMMIT.
-    Только после этого запись гарантированно сохранена в БД.
-    """
+):
+    # 1. Захешировать пароль пользователя
+    hashed_password = AuthService().get_password_hash(user.password)
+    # 2. Добавить пользователя в БД
+    user_model_data = UserAddSchema(email=user.email, hashed_password=hashed_password)
+    try:
+        new_user = await UsersRepository(session).add(user_model_data)
+    except ObjectIsAlreadyExistsException:
+        raise HTTPException(
+            detail="Пользователь с такой почтой уже существует", status_code=409
+        )
     await session.commit()
-
-    # Перечитывает состояние объекта из базы данных и обновляет его поля значениями из БД.
-    await session.refresh(new_user)
-
-    """
-    Что это дает на практике:
-        • Подтягивает значения,
-            которые сгенерировала БД: id, created_at, значения по умолчанию, триггерные поля и т.п.
-        • Полезно после commit() или flush(), если нужно быть уверенным,
-            что объект содержит актуальные значения именно из базы.
-    """
-
-    access_token = security.create_access_token(uid=str(new_user.id))
-    refresh_token = security.create_refresh_token(uid=str(new_user.id))
+    # 3. Добавить access и refresh токены
+    access_token = AuthService.create_access_token(new_user.id)
+    refresh_token = AuthService.create_refresh_token(new_user.id)
 
     response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
     response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
@@ -137,6 +115,7 @@ async def register_user(
     return new_user
 
 
+# TODO: Сделать все по аналогии с регистрацией и сделать зависимость user_id: UserIdDep
 # Вход пользователя в аккаунт
 @router.post(
     "/login",
@@ -222,7 +201,7 @@ async def refresh(
     response: Response,
     payload: TokenPayload = Depends(security.refresh_token_required),
 ):
-    # payload.sub = uid который я передаю в ручке логина при создании refresh токена
+    # payload.sub = uid который я передаю в ручке логина/регистрации при создании refresh токена
     new_access = security.create_access_token(uid=payload.sub)
 
     security.set_access_cookies(response, new_access)
