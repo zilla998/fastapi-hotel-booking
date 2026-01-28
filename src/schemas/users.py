@@ -20,7 +20,7 @@ class UserSchema(BaseModel):
 
 # Схема создания пользователя
 class UserCreateSchema(UserSchema):
-    pass
+    confirm_password: str = Field(min_length=8, max_length=64)
 
 
 # Схема авторизации пользователя

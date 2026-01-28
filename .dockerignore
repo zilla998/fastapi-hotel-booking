@@ -1,0 +1,51 @@
+# VCS
+.git
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pytype/
+.pyre/
+.coverage
+coverage.xml
+htmlcov/
+
+# Virtual envs / tooling
+.venv/
+.env
+.env.*
+!.env.example
+.python-version
+
+# Build/output
+build/
+dist/
+*.whl
+pip-wheel-metadata/
+
+# IDEs/editors
+.idea/
+.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Project-local extras
+*.log
+*.sqlite3
+*.db
+*.http
+
+# Docker compose / docs
+*.md
+docker-compose*.yml

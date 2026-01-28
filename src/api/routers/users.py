@@ -1,5 +1,5 @@
 from authx import TokenPayload
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 
 from src.config import config as authx_config
@@ -77,7 +77,7 @@ async def get_user(id: int, session: SessionDep):
     if (
         user is None
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
-        raise UserNotFound(id)
+        raise UserNotFound(name="id", uid=id)
     return user
 
 
@@ -89,14 +89,17 @@ async def get_user(id: int, session: SessionDep):
     status_code=201,
 )
 async def register_user(
-    user: UserCreateSchema, session: SessionDep
+    user: UserCreateSchema, session: SessionDep, response: Response
 ):  # session: Получаем готовую сессию без ручного создания и для управления ей (открытие/закрытие сессии)
     query = select(UsersOrm).where(UsersOrm.email == user.email)
     result = await session.execute(query)
     existing_user = result.scalar_one_or_none()
 
     if existing_user is not None:  # Проверяем существует ли пользователь с таким email
-        raise UserAlreadyExists()
+        raise UserAlreadyExists(name="email")
+
+    if user.password != user.confirm_password:
+        raise HTTPException(status_code=400, detail="Пароли не совпадают")
 
     # Создаем новый ORM-объект
     new_user = UsersOrm(email=str(user.email), hashed_password=user.password)
@@ -116,6 +119,7 @@ async def register_user(
 
     # Перечитывает состояние объекта из базы данных и обновляет его поля значениями из БД.
     await session.refresh(new_user)
+
     """
     Что это дает на практике:
         • Подтягивает значения,
@@ -123,6 +127,12 @@ async def register_user(
         • Полезно после commit() или flush(), если нужно быть уверенным,
             что объект содержит актуальные значения именно из базы.
     """
+
+    access_token = security.create_access_token(uid=str(new_user.id))
+    refresh_token = security.create_refresh_token(uid=str(new_user.id))
+
+    response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
+    response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
 
     return new_user
 
@@ -143,9 +153,7 @@ async def user_login(
     user = result.scalar_one_or_none()
 
     if user is None:
-        raise HTTPException(
-            status_code=404, detail="Пользователь с такими данными не найден"
-        )
+        raise UserNotFound(name="email")
 
     access_token = security.create_access_token(uid=str(user.id))
     refresh_token = security.create_refresh_token(uid=str(user.id))
@@ -201,7 +209,7 @@ async def delete_user(id: int, session: SessionDep):
     result = await session.execute(query)
     user = result.scalar_one_or_none()
     if user is None:
-        raise UserNotFound(id)
+        raise UserNotFound("id", id)
 
     await session.delete(user)
     await session.commit()
