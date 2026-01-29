@@ -41,13 +41,3 @@ class BaseRepository:
             return model.scalars().one()
         except IntegrityError:
             raise ObjectIsAlreadyExistsException
-
-    async def login(self, email: EmailStr, password: str):
-        query = select(self.model).where((self.model.email == str(email)))
-        model = await self.session.execute(query)
-        user = model.scalar_one_or_none()
-        if not user or not AuthService().verify_password(
-            password, user.hashed_password
-        ):
-            raise ObjectEmailOrPasswordNotValidException
-        return user

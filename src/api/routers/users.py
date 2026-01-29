@@ -6,7 +6,7 @@ from exeptions import (
     ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
 )
-from schemas.users import UserAddSchema, UserSchema
+from schemas.users import UserAddSchema
 from services.auth import AuthService
 from src.config import config as authx_config
 from src.config import security
@@ -107,17 +107,10 @@ async def register_user(
             status_code=409, detail="Пользователь с такой почтой уже существует"
         )
     await session.commit()
-    # 3. Добавить access и refresh токены
-    access_token = AuthService.create_access_token(new_user.id)
-    refresh_token = AuthService.create_refresh_token(new_user.id)
-
-    response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
-    response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
 
     return new_user
 
 
-# TODO: Сделать все по аналогии с регистрацией и сделать зависимость user_id: UserIdDep
 # Вход пользователя в аккаунт
 @router.post(
     "/login",
@@ -125,7 +118,11 @@ async def register_user(
 )
 async def user_login(user: UserLoginSchema, response: Response, session: SessionDep):
     try:
-        new_user = await UsersRepository(session).login(user.email, user.password)
+        new_user = await UsersRepository(session).get_one_or_none(email=user.email)
+        if not new_user or not AuthService().verify_password(
+            user.password, new_user.hashed_password
+        ):
+            raise ObjectEmailOrPasswordNotValidException
     except ObjectEmailOrPasswordNotValidException:
         raise HTTPException(
             status_code=404, detail="Пользователя с такими данными не существует"
