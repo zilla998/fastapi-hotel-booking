@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from exeptions import (
     ObjectEmailOrPasswordNotValidException,
-    ObjectIsAlreadyExistsException,
+    ObjectIsAlreadyExistsException, ObjectUserNotFoundException,
 )
 from schemas.users import UserAddSchema
 from services.auth import AuthService
@@ -151,7 +151,7 @@ async def user_change_password(
     session: SessionDep,
     current_user=Depends(get_current_user),
 ):
-    if credentials.new_password != credentials.repeat_password:
+    if credentials.new_password != credentials.confirm_password:
         raise HTTPException(status_code=400, detail="Пароли не совпадают")
 
     if current_user["hashed_password"] != credentials.current_password:
@@ -167,22 +167,24 @@ async def user_change_password(
     "/logout",
     summary="Выход пользователя",
 )
-async def user_logout(response: Response, session: SessionDep):
+async def user_logout(response: Response):
     response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
+    response.delete_cookie(authx_config.JWT_REFRESH_COOKIE_NAME)
     return {"logout": True}
 
 
 # Удаление пользователя
 @router.delete(
-    "/{id}",
+    "/{user_id}",
     summary="Удаление пользователя",
 )
-async def delete_user(id: int, session: SessionDep):
-    query = select(UsersOrm).where(UsersOrm.id == id)
-    result = await session.execute(query)
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise UserNotFound("id", id)
+async def delete_user(user_id: int, session: SessionDep):
+    try:
+        user = await UsersRepository(session).get_one_or_none(id=user_id)
+        if user is None:
+            raise ObjectUserNotFoundException()
+    except ObjectUserNotFoundException:
+        raise HTTPException(status_code=404, detail="Пользователь с таким id не найден")
 
     await session.delete(user)
     await session.commit()

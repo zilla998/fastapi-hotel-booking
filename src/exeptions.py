@@ -11,3 +11,7 @@ class ObjectIsAlreadyExistsException(BookingException):
 
 class ObjectEmailOrPasswordNotValidException(BookingException):
     detail = "Неверные почта или пароль"
+
+
+class ObjectUserNotFoundException(BookingException):
+    detail = "Пользователь не найден"
