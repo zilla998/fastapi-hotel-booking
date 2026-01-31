@@ -3,7 +3,7 @@ from fastapi.params import Depends
 from sqlalchemy import select
 
 from api.routers.users import is_admin_required
-from exeptions import ObjectIsAlreadyExistsException
+from exeptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from repositories.hotels import HotelsRepository
 from src.database import SessionDep
 from src.exceptions.hotels import HotelNotFound
@@ -20,26 +20,26 @@ router = APIRouter(prefix="/hotels", tags=["Отели"])
     status_code=200,
 )
 async def get_hotels(session: SessionDep):
-    result = await session.execute(select(HotelsOrm))
-    hotels = result.scalars().all()
-
-    return hotels
+    hotels_model = await HotelsRepository(session).get_all()
+    return hotels_model
 
 
 @router.get(
-    "/{id}",
+    "/{hotel_id}",
     summary="Получение отеля по id или названию",
     response_model=HotelsReadSchema,
 )
-async def get_hotel(id: int | None, title: str | None, session: SessionDep):
-    query = select(HotelsOrm).where(HotelsOrm.id == id or HotelsOrm.title == title)
-    result = await session.execute(query)
-    hotel = result.scalar_one_or_none()
+async def get_hotel(hotel_id: int, session: SessionDep):
+    try:
+        hotel_model = await HotelsRepository(session).get_one_or_none(id=hotel_id)
+        if hotel_model is None:
+            raise ObjectNotFoundException()
+    except ObjectNotFoundException:
+        raise HTTPException(
+            status_code=404, detail=f"Отель с id: {hotel_id} не существует"
+        )
 
-    if hotel is None:
-        raise HotelNotFound(id, title)
-
-    return hotel
+    return hotel_model
 
 
 @router.post(

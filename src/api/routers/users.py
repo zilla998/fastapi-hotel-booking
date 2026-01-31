@@ -9,7 +9,7 @@ from src.exceptions.users import UserNotFound
 from src.exeptions import (
     ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
-    ObjectUserNotFoundException,
+    ObjectNotFoundException,
 )
 from src.models.users import Role, UsersOrm
 from src.repositories.users import UsersRepository
@@ -44,8 +44,8 @@ async def get_current_user(
     try:
         user = await UsersRepository(session).get_one_or_none(id=user_id)
         if user is None:
-            raise ObjectUserNotFoundException()
-    except ObjectUserNotFoundException:
+            raise ObjectNotFoundException()
+    except ObjectNotFoundException:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
     return user
@@ -191,8 +191,8 @@ async def delete_user(user_id: int, session: SessionDep):
     try:
         user = await UsersRepository(session).get_one_or_none(id=user_id)
         if user is None:
-            raise ObjectUserNotFoundException()
-    except ObjectUserNotFoundException:
+            raise ObjectNotFoundException()
+    except ObjectNotFoundException:
         raise HTTPException(status_code=404, detail="Пользователь с таким id не найден")
 
     await session.delete(user)
