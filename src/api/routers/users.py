@@ -1,25 +1,25 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
-
-from exeptions import (
-    ObjectEmailOrPasswordNotValidException,
-    ObjectIsAlreadyExistsException, ObjectUserNotFoundException,
-)
-from schemas.users import UserAddSchema
-from services.auth import AuthService
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
 from src.exceptions.users import UserNotFound
-from src.models.users import UsersOrm
+from src.exeptions import (
+    ObjectEmailOrPasswordNotValidException,
+    ObjectIsAlreadyExistsException,
+    ObjectUserNotFoundException,
+)
+from src.models.users import Role, UsersOrm
 from src.repositories.users import UsersRepository
 from src.schemas.users import (
+    UserAddSchema,
     UserChangePasswordScheme,
     UserCreateSchema,
     UserLoginSchema,
     UserReadSchema,
 )
+from src.services.auth import AuthService
 
 router = APIRouter(
     prefix="/users", tags=["Пользователи"]
@@ -31,7 +31,7 @@ def require_access_cookie(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Доступ запрещен")
 
 
-async def get_current_user(request: Request, session: SessionDep):
+async def get_current_user(request: Request):
     token = request.cookies.get("my_access_token")
     if not token:
         raise HTTPException(status_code=401)
@@ -40,6 +40,14 @@ async def get_current_user(request: Request, session: SessionDep):
     user_id = payload.sub
 
     return user_id
+
+
+async def is_admin_required(request: Request, session: SessionDep) -> None:
+    user_id = get_current_user(request)
+    user_model = await UsersRepository(session).get_one_or_none(id=user_id)
+    if user_model:
+        if user_model.role != Role.ADMIN:
+            raise HTTPException(status_code=401, detail="Ты не админ!")
 
 
 @router.get(
@@ -83,7 +91,7 @@ async def get_user(id: int, session: SessionDep):
     if (
         user is None
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
-        raise UserNotFound(name="id", uid=id)
+        raise UserNotFound(name="id")
     return user
 
 
@@ -112,10 +120,7 @@ async def register_user(
 
 
 # Вход пользователя в аккаунт
-@router.post(
-    "/login",
-    summary="Вход пользователя",
-)
+@router.post("/login", summary="Вход пользователя")
 async def user_login(user: UserLoginSchema, response: Response, session: SessionDep):
     try:
         new_user = await UsersRepository(session).get_one_or_none(email=user.email)
@@ -163,10 +168,7 @@ async def user_change_password(
     return {"message": "Пароль успешно изменен"}
 
 
-@router.post(
-    "/logout",
-    summary="Выход пользователя",
-)
+@router.post("/logout", summary="Выход пользователя")
 async def user_logout(response: Response):
     response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
     response.delete_cookie(authx_config.JWT_REFRESH_COOKIE_NAME)
@@ -177,6 +179,7 @@ async def user_logout(response: Response):
 @router.delete(
     "/{user_id}",
     summary="Удаление пользователя",
+    dependencies=[Depends(is_admin_required)],
 )
 async def delete_user(user_id: int, session: SessionDep):
     try:
@@ -194,8 +197,7 @@ async def delete_user(user_id: int, session: SessionDep):
 
 @router.post("/refresh")
 async def refresh(
-    response: Response,
-    payload: TokenPayload = Depends(security.refresh_token_required),
+    response: Response, payload: TokenPayload = Depends(security.refresh_token_required)
 ):
     # payload.sub = uid который я передаю в ручке логина/регистрации при создании refresh токена
     new_access = security.create_access_token(uid=payload.sub)
