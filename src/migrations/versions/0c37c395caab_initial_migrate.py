@@ -1,8 +1,8 @@
-"""add new models
+"""initial migrate
 
-Revision ID: 5468897054e0
-Revises: cf826022e304
-Create Date: 2026-01-22 19:32:11.789184
+Revision ID: 0c37c395caab
+Revises: 
+Create Date: 2026-01-31 12:00:08.636475
 
 """
 from typing import Sequence, Union
@@ -12,8 +12,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '5468897054e0'
-down_revision: Union[str, Sequence[str], None] = 'cf826022e304'
+revision: str = '0c37c395caab'
+down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -25,6 +25,20 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=100), nullable=False),
     sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('hotels',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('title', sa.String(length=100), nullable=False),
+    sa.Column('location', sa.String(length=50), nullable=False),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('users',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('email', sa.String(length=200), nullable=False),
+    sa.Column('hashed_password', sa.String(length=200), nullable=False),
+    sa.Column('role', sa.Enum('ADMIN', 'USER', name='role'), nullable=False),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('email')
     )
     op.create_table('rooms',
     sa.Column('id', sa.Integer(), nullable=False),
@@ -64,5 +78,7 @@ def downgrade() -> None:
     op.drop_table('room_facilities')
     op.drop_table('bookings')
     op.drop_table('rooms')
+    op.drop_table('users')
+    op.drop_table('hotels')
     op.drop_table('facilities')
     # ### end Alembic commands ###

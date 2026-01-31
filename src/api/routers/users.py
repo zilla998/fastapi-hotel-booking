@@ -1,6 +1,7 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
+
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
@@ -31,23 +32,28 @@ def require_access_cookie(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Доступ запрещен")
 
 
-async def get_current_user(request: Request):
-    token = request.cookies.get("my_access_token")
-    if not token:
-        raise HTTPException(status_code=401)
+async def get_current_user(
+    payload: TokenPayload = Depends(security.access_token_required),
+    session: SessionDep = None,
+):
+    try:
+        user_id = int(payload.sub)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=401, detail="Некорректный токен")
 
-    payload = security.verify_token(token)
-    user_id = payload.sub
+    try:
+        user = await UsersRepository(session).get_one_or_none(id=user_id)
+        if user is None:
+            raise ObjectUserNotFoundException()
+    except ObjectUserNotFoundException:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    return user_id
+    return user
 
 
-async def is_admin_required(request: Request, session: SessionDep) -> None:
-    user_id = get_current_user(request)
-    user_model = await UsersRepository(session).get_one_or_none(id=user_id)
-    if user_model:
-        if user_model.role != Role.ADMIN:
-            raise HTTPException(status_code=401, detail="Ты не админ!")
+async def is_admin_required(current_user=Depends(get_current_user)) -> None:
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=401, detail="Ты не админ!")
 
 
 @router.get(

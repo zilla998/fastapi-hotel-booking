@@ -1,7 +1,10 @@
-from exeptions import ObjectIsAlreadyExistsException
 from fastapi import APIRouter, HTTPException
-from repositories.hotels import HotelsRepository
+from fastapi.params import Depends
 from sqlalchemy import select
+
+from api.routers.users import is_admin_required
+from exeptions import ObjectIsAlreadyExistsException
+from repositories.hotels import HotelsRepository
 from src.database import SessionDep
 from src.exceptions.hotels import HotelNotFound
 from src.models.hotels import HotelsOrm
@@ -39,7 +42,9 @@ async def get_hotel(id: int | None, title: str | None, session: SessionDep):
     return hotel
 
 
-@router.post("/add_hotel", summary="Добавление отеля")
+@router.post(
+    "/add_hotel", summary="Добавление отеля", dependencies=[Depends(is_admin_required)]
+)
 async def add_hotel(hotel: HotelsSchema, session: SessionDep):
     try:
         new_hotel = await HotelsRepository(session).add(hotel)
