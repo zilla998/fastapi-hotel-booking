@@ -5,6 +5,8 @@ class UserReadSchema(BaseModel):
     id: int
     email: str
     role: str
+    is_active: bool
+    created_at: str
 
     model_config = ConfigDict(from_attributes=True)  # Разрешаем читать ORM-объекты
 

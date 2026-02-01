@@ -2,10 +2,10 @@ from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 
-from enums import UserRoles
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
+from src.enums import UserRoles
 from src.exceptions.users import UserNotFound
 from src.exeptions import (
     ObjectEmailOrPasswordNotValidException,

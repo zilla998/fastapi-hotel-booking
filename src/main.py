@@ -3,14 +3,19 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+from starlette.middleware.sessions import SessionMiddleware
 
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.admin import setup_admin
 from src.api.routers.hotels import router as hotels_router  # импортируем роутер hotels
 from src.api.routers.users import router as users_router  # импортируем роутер users
+from src.config import config
 
 app = FastAPI()
+
+# Добавляем SessionMiddleware, необходимый для sqladmin
+app.add_middleware(SessionMiddleware, secret_key=config.JWT_SECRET_KEY)
 
 # Подключаем админку
 setup_admin(app)

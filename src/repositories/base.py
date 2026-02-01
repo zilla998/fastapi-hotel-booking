@@ -5,11 +5,11 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError, NoResultFound
 
-from exeptions import (
+from src.exeptions import (
     ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
 )
-from services.auth import AuthService
+from src.services.auth import AuthService
 
 
 class BaseRepository:

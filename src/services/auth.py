@@ -1,6 +1,6 @@
 from pwdlib import PasswordHash
 
-from config import security
+from src.config import security
 
 
 class AuthService:

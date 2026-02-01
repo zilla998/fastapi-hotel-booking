@@ -16,26 +16,37 @@ class AdminAuth(AuthenticationBackend):
         super().__init__(secret_key=config.JWT_SECRET_KEY)
 
     async def login(self, request: Request) -> bool:
-        """Вход в админку не требуется, т.к. используем JWT из куки"""
+        """Автоматический вход, если токен уже есть и он валиден"""
+        # Если authenticate вернул True, sqladmin сам пустит.
+        # Но если мы попали на страницу логина (/admin/login),
+        # значит authenticate вернул False.
+        # В этом методе login обычно обрабатывается POST запрос с формой.
         return True
 
     async def logout(self, request: Request) -> bool:
         """Выход из админки"""
+        request.session.clear()
         return True
 
     async def authenticate(self, request: Request) -> bool:
         """Проверка, что пользователь - администратор"""
-        # Получаем токен из куки
+        # Проверяем, есть ли уже данные в сессии sqladmin
+        if request.session.get("token"):
+            return True
+
+        # Если в сессии нет, проверяем JWT из куки
         access_token = request.cookies.get(config.JWT_ACCESS_COOKIE_NAME, None)
         if access_token is None:
             return False
 
         try:
-            payload = security.verify_access_token(access_token)
+            payload = security._decode_token(access_token)
             user_id = int(payload.sub)
             async with async_session_maker() as session:
                 user = await UsersRepository(session).get_one_or_none(id=user_id)
                 if user and user.role == UserRoles.admin:
+                    # Сохраняем признак аутентификации в сессию для sqladmin
+                    request.session.update({"token": access_token})
                     return True
         except Exception as e:
             print("verify_access_token error:", repr(e))
