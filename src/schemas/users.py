@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserReadSchema(BaseModel):
     id: int
     email: str
+    role: str
 
     model_config = ConfigDict(from_attributes=True)  # Разрешаем читать ORM-объекты
 

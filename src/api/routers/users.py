@@ -2,6 +2,7 @@ from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 
+from enums import UserRoles
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
@@ -11,7 +12,7 @@ from src.exeptions import (
     ObjectIsAlreadyExistsException,
     ObjectNotFoundException,
 )
-from src.models.users import Role, UsersOrm
+from src.models.users import UsersOrm
 from src.repositories.users import UsersRepository
 from src.schemas.users import (
     UserAddSchema,
@@ -52,7 +53,7 @@ async def get_current_user(
 
 
 async def is_admin_required(current_user=Depends(get_current_user)) -> None:
-    if current_user.role != Role.ADMIN:
+    if current_user.role != UserRoles.admin:
         raise HTTPException(status_code=401, detail="Ты не админ!")
 
 
@@ -211,3 +212,23 @@ async def refresh(
     security.set_access_cookies(response, new_access)
 
     return {"message": "refreshed token"}
+
+
+@router.post(
+    "/change-role",
+    summary="Изменение роли пользователя",
+    response_model=UserReadSchema,
+    # dependencies=[Depends(is_admin_required)],
+)
+async def change_role(user_id: int, role: str, session: SessionDep):
+    try:
+        user_model = await UsersRepository(session).get_one_or_none(id=user_id)
+        if user_model is None:
+            raise ObjectNotFoundException()
+    except ObjectNotFoundException:
+        raise HTTPException(status_code=404, detail="Юзер не найден")
+
+    user_model.role = role
+    await session.commit()
+    await session.refresh(user_model)
+    return user_model
