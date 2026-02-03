@@ -5,7 +5,9 @@ from sqladmin.authentication import AuthenticationBackend
 from src.config import config, security
 from src.database import async_session_maker, engine
 from src.enums import UserRoles
+from src.models.facilities import FacilitiesOrm
 from src.models.hotels import HotelsOrm
+from src.models.rooms import RoomsOrm
 from src.models.users import UsersOrm
 from src.repositories.users import UsersRepository
 
@@ -69,8 +71,33 @@ class HotelsAdmin(ModelView, model=HotelsOrm):
     column_searchable_list = [HotelsOrm.title, HotelsOrm.location]
 
 
+class RoomsAdmin(ModelView, model=RoomsOrm):
+    name = "Комната"
+    name_plural = "Комнаты"
+    # column_list = [
+    #     RoomsOrm.id,
+    #     RoomsOrm.title,
+    #     RoomsOrm.description,
+    #     RoomsOrm.price,
+    #     RoomsOrm.quantity,
+    #     RoomsOrm.hotel_id,
+    # ]
+    column_list = "__all__"
+    column_searchable_list = [RoomsOrm.title, RoomsOrm.price, RoomsOrm.quantity]
+
+
+class FacilitiesAdmin(ModelView, model=FacilitiesOrm):
+    name = "Предмет"
+    name_plural = "Предметы"
+    # column_list = [FacilitiesOrm.id, FacilitiesOrm.title, FacilitiesOrm.rooms]
+    column_list = "__all__"
+    column_searchable_list = [FacilitiesOrm.title, FacilitiesOrm.rooms]
+
+
 def setup_admin(app):
     admin = Admin(app, engine=engine, authentication_backend=AdminAuth())
     admin.add_view(UsersAdmin)
     admin.add_view(HotelsAdmin)
+    admin.add_view(RoomsAdmin)
+    admin.add_view(FacilitiesAdmin)
     return admin

@@ -6,6 +6,5 @@ class BookingEnums(StrEnum):
 
 
 class UserRoles(BookingEnums):
-    owner = "Owner"
     admin = "Admin"
     user = "User"

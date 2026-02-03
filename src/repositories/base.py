@@ -1,15 +1,10 @@
-from http.client import HTTPException
-
-from pwdlib.exceptions import UnknownHashError
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy import insert, select
-from sqlalchemy.exc import IntegrityError, NoResultFound
+from sqlalchemy.exc import IntegrityError
 
 from src.exeptions import (
-    ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
 )
-from src.services.auth import AuthService
 
 
 class BaseRepository:
@@ -18,7 +13,7 @@ class BaseRepository:
     def __init__(self, session):
         self.session = session
 
-    async def get_all(self, *args, **kwargs):
+    async def get_all(self):
         query = select(self.model)
         result = await self.session.execute(query)
         return result.scalars().all()

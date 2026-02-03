@@ -100,8 +100,6 @@ async def get_user(id: int, session: SessionDep):
     ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
         raise UserNotFound(name="id")
     return user
-
-
 @router.post(
     "/register",
     summary="Создание пользователя",

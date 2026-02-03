@@ -8,7 +8,11 @@ from starlette.middleware.sessions import SessionMiddleware
 sys.path.append(str(Path(__file__).parent.parent))
 
 from src.admin import setup_admin
+from src.api.routers.facilities import (
+    router as facilities_router,
+)  # импортируем роутер facilities
 from src.api.routers.hotels import router as hotels_router  # импортируем роутер hotels
+from src.api.routers.rooms import router as rooms_router  # импортируем роутер rooms
 from src.api.routers.users import router as users_router  # импортируем роутер users
 from src.config import config
 
@@ -33,6 +37,8 @@ async def say_hello(name: str):
 
 app.include_router(users_router)  # Подключаем роутер users
 app.include_router(hotels_router)  # Подключаем роутер hotels
+app.include_router(rooms_router)  # Подключаем роутер rooms
+app.include_router(facilities_router)  # Подключаем роутер facilities
 
 
 if __name__ == "__main__":
