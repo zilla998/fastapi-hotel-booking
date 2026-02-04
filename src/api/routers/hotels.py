@@ -1,12 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
-from sqlalchemy import select
 
 from src.api.routers.users import is_admin_required
 from src.database import SessionDep
-from src.exceptions.hotels import HotelNotFound
-from src.exeptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
-from src.models.hotels import HotelsOrm
+from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.repositories.hotels import HotelsRepository
 from src.schemas.hotels import HotelsReadSchema, HotelsSchema
 

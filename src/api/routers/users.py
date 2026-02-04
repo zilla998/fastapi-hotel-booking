@@ -1,13 +1,12 @@
 from authx import TokenPayload
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
 from src.enums import UserRoles
-from src.exceptions.users import UserNotFound
-from src.exeptions import (
+from src.exceptions import (
     ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
     ObjectNotFoundException,
@@ -30,7 +29,9 @@ router = APIRouter(
 
 def require_access_cookie(request: Request) -> None:
     if not request.cookies.get(authx_config.JWT_ACCESS_COOKIE_NAME):
-        raise HTTPException(status_code=401, detail="Доступ запрещен")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Доступ запрещен"
+        )
 
 
 async def get_current_user(
@@ -40,7 +41,9 @@ async def get_current_user(
     try:
         user_id = int(payload.sub)
     except (TypeError, ValueError):
-        raise HTTPException(status_code=401, detail="Некорректный токен")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Некорректный токен"
+        )
 
     try:
         user = await UsersRepository(session).get_one_or_none(id=user_id)
@@ -54,7 +57,9 @@ async def get_current_user(
 
 async def is_admin_required(current_user=Depends(get_current_user)) -> None:
     if current_user.role != UserRoles.admin:
-        raise HTTPException(status_code=401, detail="Ты не админ!")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Ты не админ!"
+        )
 
 
 @router.get(
@@ -66,7 +71,7 @@ async def is_admin_required(current_user=Depends(get_current_user)) -> None:
         Depends(require_access_cookie),
         Depends(security.access_token_required),
     ],
-    status_code=200,
+    status_code=status.HTTP_200_OK,
 )
 async def get_users(session: SessionDep):
     query = select(UsersOrm)
@@ -88,18 +93,18 @@ async def get_users(session: SessionDep):
     status_code=200,
 )
 async def get_user(id: int, session: SessionDep):
-    query = select(UsersOrm).where(UsersOrm.id == id)
-    result = await session.execute(
-        query
-    )  # Отправляем запрос в БД делает выборку из таблицы UsersOrm с фильтром по id
-    user = (
-        result.scalar_one_or_none()
-    )  # Возвращает объект из результата. Если объекта нет, возвращает None
-    if (
-        user is None
-    ):  # Если пользователя с таким id нет, возвращает статус код и сообщение об ошибки
-        raise UserNotFound(name="id")
-    return user
+    try:
+        user_model = await UsersRepository(session).get_one_or_none(id=id)
+        if user_model is None:
+            raise ObjectNotFoundException()
+    except ObjectNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+        )
+
+    return user_model
+
+
 @router.post(
     "/register",
     summary="Создание пользователя",
@@ -117,7 +122,8 @@ async def register_user(
         new_user = await UsersRepository(session).add(user_model_data)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
-            status_code=409, detail="Пользователь с такой почтой уже существует"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Пользователь с такой почтой уже существует",
         )
     await session.commit()
 
@@ -135,7 +141,8 @@ async def user_login(user: UserLoginSchema, response: Response, session: Session
             raise ObjectEmailOrPasswordNotValidException
     except ObjectEmailOrPasswordNotValidException:
         raise HTTPException(
-            status_code=404, detail="Пользователя с такими данными не существует"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователя с такими данными не существует",
         )
 
     access_token = AuthService.create_access_token(new_user.id)
@@ -162,10 +169,14 @@ async def user_change_password(
     current_user=Depends(get_current_user),
 ):
     if credentials.new_password != credentials.confirm_password:
-        raise HTTPException(status_code=400, detail="Пароли не совпадают")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Пароли не совпадают"
+        )
 
     if current_user["hashed_password"] != credentials.current_password:
-        raise HTTPException(status_code=400, detail="Текущий пароль неверный")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Текущий пароль неверный"
+        )
 
     current_user["hashed_password"] = credentials.new_password
     await session.commit()
@@ -192,12 +203,15 @@ async def delete_user(user_id: int, session: SessionDep):
         if user is None:
             raise ObjectNotFoundException()
     except ObjectNotFoundException:
-        raise HTTPException(status_code=404, detail="Пользователь с таким id не найден")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь с таким id не найден",
+        )
 
     await session.delete(user)
     await session.commit()
 
-    return Response(status_code=204)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/refresh")
@@ -224,7 +238,9 @@ async def change_role(user_id: int, role: str, session: SessionDep):
         if user_model is None:
             raise ObjectNotFoundException()
     except ObjectNotFoundException:
-        raise HTTPException(status_code=404, detail="Юзер не найден")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Юзер не найден"
+        )
 
     user_model.role = role
     await session.commit()

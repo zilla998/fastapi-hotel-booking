@@ -3,7 +3,7 @@ from fastapi.params import Depends
 
 from api.routers.users import is_admin_required, require_access_cookie
 from src.database import SessionDep
-from src.exeptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
+from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.repositories.rooms import RoomsRepository
 from src.schemas.rooms import AddRoomSchema, ChangeRoomSchema, RoomSchema
 
@@ -50,9 +50,9 @@ async def add_room(new_room: AddRoomSchema, session: SessionDep):
 
 
 @router.patch("/{room_id}", summary="Изменение номера")
-async def change_room(new_room: ChangeRoomSchema, session: SessionDep):
+async def change_room(room_id: int, new_room: ChangeRoomSchema, session: SessionDep):
     try:
-        room_model = await RoomsRepository(session).get_one_or_none(id=new_room.id)
+        room_model = await RoomsRepository(session).get_one_or_none(id=room_id)
         if room_model is None:
             raise ObjectNotFoundException
     except ObjectNotFoundException:

@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError
 
-from src.exeptions import (
+from src.exceptions import (
     ObjectIsAlreadyExistsException,
 )
 
@@ -24,6 +24,7 @@ class BaseRepository:
 
         model = result.scalars().one_or_none()
 
+        # TODO: return None to raise ObjectNotFoundException
         if model is None:
             return None
 

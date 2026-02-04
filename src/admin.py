@@ -60,7 +60,13 @@ class AdminAuth(AuthenticationBackend):
 class UsersAdmin(ModelView, model=UsersOrm):
     name = "Пользователь"
     name_plural = "Пользователи"
-    column_list = [UsersOrm.id, UsersOrm.email]
+    column_list = [
+        UsersOrm.id,
+        UsersOrm.email,
+        UsersOrm.role,
+        UsersOrm.is_active,
+        UsersOrm.created_at,
+    ]
     column_searchable_list = [UsersOrm.email]
 
 

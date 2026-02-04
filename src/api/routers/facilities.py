@@ -4,7 +4,7 @@ from src.database import SessionDep
 from src.repositories.facilities import FacilitiesRepository
 from src.schemas.facilities import FacilitiesReadSchema
 
-router = APIRouter(prefix="/facilities", tags=["Предметы"])
+router = APIRouter(prefix="/facilities", tags=["Предметы в номерах"])
 
 
 @router.get(

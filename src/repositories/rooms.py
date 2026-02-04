@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError
 
-from src.exeptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
+from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.models.hotels import HotelsOrm
 from src.models.rooms import RoomsOrm
 from src.repositories.base import BaseRepository
