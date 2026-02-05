@@ -14,5 +14,9 @@ class ObjectEmailOrPasswordNotValidException(BookingException):
     detail = "Неверные почта или пароль"
 
 
+class ObjectNotValidException(BookingException):
+    detail = "Невалидный объект"
+
+
 class ObjectNotFoundException(BookingException):
     detail = "Объект не найден"

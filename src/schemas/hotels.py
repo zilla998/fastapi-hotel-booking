@@ -12,3 +12,7 @@ class HotelsReadSchema(BaseModel):
 class HotelsSchema(BaseModel):
     title: str = Field(min_length=5, max_length=100)
     location: str = Field(max_length=50)
+
+
+class ChangeHotelSchema(HotelsSchema):
+    pass
