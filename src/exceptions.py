@@ -9,14 +9,13 @@ class ObjectIsAlreadyExistsException(BookingException):
     detail = "Объект уже существует"
 
 
-# TODO: FIX NAME - change to ObjectNotValidException
-class ObjectEmailOrPasswordNotValidException(BookingException):
-    detail = "Неверные почта или пароль"
-
-
 class ObjectNotValidException(BookingException):
     detail = "Невалидный объект"
 
 
 class ObjectNotFoundException(BookingException):
     detail = "Объект не найден"
+
+
+class ObjectNotAllowedException(BookingException):
+    detail = "Доступ к объекту запрещен"

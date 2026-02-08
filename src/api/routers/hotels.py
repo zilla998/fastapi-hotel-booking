@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
+from src.api.dependencies import DBDep, PaginationDep, PaginationParams
 from src.api.routers.users import is_admin_required
 from src.database import SessionDep
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
@@ -15,9 +16,8 @@ router = APIRouter(prefix="/hotels", tags=["Отели"])
     summary="Получение списка отелей",
     response_model=list[HotelsReadSchema],
 )
-async def get_hotels(session: SessionDep):
-    hotels_model = await HotelsRepository(session).get_all()
-    return hotels_model
+async def get_hotels(db: DBDep, pagination: PaginationDep):
+    return await db.hotels.get_all(limit=pagination.per_page, offset=pagination.page)
 
 
 @router.get(

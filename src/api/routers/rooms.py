@@ -30,7 +30,7 @@ async def get_room(room_id: int, session: SessionDep):
     return room_model
 
 
-@router.post("", summary="Создание номера")
+@router.post("", summary="Создание номера", dependencies=[Depends(is_admin_required)])
 async def add_room(new_room: AddRoomSchema, session: SessionDep):
     try:
         room_model = await RoomsRepository(session).add(new_room)
@@ -49,7 +49,9 @@ async def add_room(new_room: AddRoomSchema, session: SessionDep):
     return room_model
 
 
-@router.patch("/{room_id}", summary="Изменение номера")
+@router.patch(
+    "/{room_id}", summary="Изменение номера", dependencies=[Depends(is_admin_required)]
+)
 async def change_room(room_id: int, new_room: ChangeRoomSchema, session: SessionDep):
     try:
         room_model = await RoomsRepository(session).get_one_or_none(id=room_id)
@@ -68,7 +70,7 @@ async def change_room(room_id: int, new_room: ChangeRoomSchema, session: Session
 @router.delete(
     "/{room_id}",
     summary="Удаление комнаты",
-    dependencies=[Depends(is_admin_required), Depends(require_access_cookie)],
+    dependencies=[Depends(is_admin_required)],
 )
 async def delete_room(room_id: int, session: SessionDep):
     try:

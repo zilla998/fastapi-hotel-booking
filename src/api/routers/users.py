@@ -1,21 +1,21 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from sqlalchemy import select
 
+from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
 from src.config import security
 from src.database import SessionDep
 from src.enums import UserRoles
 from src.exceptions import (
-    ObjectEmailOrPasswordNotValidException,
     ObjectIsAlreadyExistsException,
+    ObjectNotAllowedException,
     ObjectNotFoundException,
+    ObjectNotValidException,
 )
-from src.models.users import UsersOrm
 from src.repositories.users import UsersRepository
 from src.schemas.users import (
     UserAddSchema,
-    UserChangePasswordScheme,
+    UserChangePasswordSchema,
     UserCreateSchema,
     UserLoginSchema,
     UserReadSchema,
@@ -30,13 +30,13 @@ router = APIRouter(
 def require_access_cookie(request: Request) -> None:
     if not request.cookies.get(authx_config.JWT_ACCESS_COOKIE_NAME):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Доступ запрещен"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Доступ разрешен только авторизованным пользователям!",
         )
 
 
 async def get_current_user(
-    payload: TokenPayload = Depends(security.access_token_required),
-    session: SessionDep = None,
+    payload: TokenPayload = Depends(security.access_token_required), db: DBDep = None
 ):
     try:
         user_id = int(payload.sub)
@@ -46,7 +46,7 @@ async def get_current_user(
         )
 
     try:
-        user = await UsersRepository(session).get_one_or_none(id=user_id)
+        user = await db.users.get_one_or_none(id=user_id)
         if user is None:
             raise ObjectNotFoundException()
     except ObjectNotFoundException:
@@ -55,91 +55,83 @@ async def get_current_user(
     return user
 
 
-async def is_admin_required(current_user=Depends(get_current_user)) -> None:
-    if current_user.role != UserRoles.admin:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Ты не админ!"
-        )
+async def is_admin_required(
+    _: None = Depends(require_access_cookie), current_user=Depends(get_current_user)
+) -> None:
+    if require_access_cookie:
+        if current_user.role != UserRoles.admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Доступ только для администратора",
+            )
 
 
 @router.get(
     "",
-    # Если мы делаем ручку на основной префикс то лучше оставлять path пустым! "/" может привести к ошибкам (Редиректу)
     summary="Получение списка пользователей",
     response_model=list[UserReadSchema],
     dependencies=[
-        Depends(require_access_cookie),
-        Depends(security.access_token_required),
+        Depends(is_admin_required),
     ],
-    status_code=status.HTTP_200_OK,
 )
-async def get_users(session: SessionDep):
-    query = select(UsersOrm)
-    result = await session.execute(query)
-    users = (
-        result.scalars().all()
-    )  # scalars это что-то типа objects в Django (User.objects.all())
-    return users
+async def get_users(db: DBDep, pagination: PaginationDep):
+    return await db.users.get_all(limit=pagination.per_page, offset=pagination.page)
 
 
 @router.get(
-    "/{id}",
+    "/{user_id}",
     summary="Получение пользователя по id",
     dependencies=[
-        Depends(require_access_cookie),
-        Depends(security.access_token_required),
+        Depends(is_admin_required),
     ],
-    response_model=UserReadSchema,  # Указываем схему, по которой будет возвращаться наш запрос
-    status_code=200,
+    response_model=UserReadSchema,
 )
-async def get_user(id: int, session: SessionDep):
+async def get_user(user_id: int, db: DBDep):
     try:
-        user_model = await UsersRepository(session).get_one_or_none(id=id)
-        if user_model is None:
-            raise ObjectNotFoundException()
+        user = await db.users.get_one_or_none(id=user_id)
+        if user is None:
+            raise ObjectNotFoundException
     except ObjectNotFoundException:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Пользователь с id: {user_id} не найден",
         )
-
-    return user_model
+    return user
 
 
 @router.post(
     "/register",
     summary="Создание пользователя",
-    response_model=UserReadSchema,  # Указываем схему ответа без пароля для безопасности
-    status_code=201,
+    response_model=UserReadSchema,
+    status_code=status.HTTP_201_CREATED,
 )
-async def register_user(
-    user: UserCreateSchema, session: SessionDep, response: Response
-):
+async def register_user(user: UserCreateSchema, db: DBDep):
     # 1. За хешировать пароль пользователя
     hashed_password = AuthService().get_password_hash(user.password)
     # 2. Добавить пользователя в БД
     user_model_data = UserAddSchema(email=user.email, hashed_password=hashed_password)
     try:
-        new_user = await UsersRepository(session).add(user_model_data)
+        new_user = await db.users.add(user_model_data)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Пользователь с такой почтой уже существует",
         )
-    await session.commit()
 
+    await db.commit()
     return new_user
 
 
 # Вход пользователя в аккаунт
 @router.post("/login", summary="Вход пользователя")
-async def user_login(user: UserLoginSchema, response: Response, session: SessionDep):
+async def user_login(user: UserLoginSchema, response: Response, db: DBDep):
     try:
-        new_user = await UsersRepository(session).get_one_or_none(email=user.email)
-        if not new_user or not AuthService().verify_password(
+        new_user = await db.users.get_one_or_none(email=user.email)
+        if new_user is None or not AuthService().verify_password(
             user.password, new_user.hashed_password
         ):
-            raise ObjectEmailOrPasswordNotValidException
-    except ObjectEmailOrPasswordNotValidException:
+            raise ObjectNotValidException
+    except ObjectNotValidException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Пользователя с такими данными не существует",
@@ -164,8 +156,8 @@ async def user_login(user: UserLoginSchema, response: Response, session: Session
     ],
 )
 async def user_change_password(
-    credentials: UserChangePasswordScheme,
-    session: SessionDep,
+    credentials: UserChangePasswordSchema,
+    db: DBDep,
     current_user=Depends(get_current_user),
 ):
     if credentials.new_password != credentials.confirm_password:
@@ -179,8 +171,8 @@ async def user_change_password(
         )
 
     current_user["hashed_password"] = credentials.new_password
-    await session.commit()
 
+    await db.commit()
     return {"message": "Пароль успешно изменен"}
 
 
@@ -196,22 +188,16 @@ async def user_logout(response: Response):
     "/{user_id}",
     summary="Удаление пользователя",
     dependencies=[Depends(is_admin_required)],
+    status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_user(user_id: int, session: SessionDep):
+async def delete_user(user_id: int, db: DBDep):
     try:
-        user = await UsersRepository(session).get_one_or_none(id=user_id)
-        if user is None:
-            raise ObjectNotFoundException()
+        await db.users.delete(id=user_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пользователь с таким id не найден",
+            detail=f"Пользователь с id: {user_id} не найден",
         )
-
-    await session.delete(user)
-    await session.commit()
-
-    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post("/refresh")
@@ -219,30 +205,8 @@ async def refresh(
     response: Response, payload: TokenPayload = Depends(security.refresh_token_required)
 ):
     # payload.sub = uid который я передаю в ручке логина/регистрации при создании refresh токена
-    new_access = security.create_access_token(uid=payload.sub)
+    new_access = security.create_access_token(uid=payload.sub, fresh=False)
 
-    security.set_access_cookies(response, new_access)
+    security.set_access_cookies(new_access, response=response)
 
     return {"message": "refreshed token"}
-
-
-@router.post(
-    "/change-role",
-    summary="Изменение роли пользователя",
-    response_model=UserReadSchema,
-    # dependencies=[Depends(is_admin_required)],
-)
-async def change_role(user_id: int, role: str, session: SessionDep):
-    try:
-        user_model = await UsersRepository(session).get_one_or_none(id=user_id)
-        if user_model is None:
-            raise ObjectNotFoundException()
-    except ObjectNotFoundException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Юзер не найден"
-        )
-
-    user_model.role = role
-    await session.commit()
-    await session.refresh(user_model)
-    return user_model

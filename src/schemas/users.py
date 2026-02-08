@@ -1,4 +1,7 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+
+PASSWORD_MIN_LENGTH = 8
+PASSWORD_MAX_LENGTH = 64
 
 
 class UserReadSchema(BaseModel):
@@ -14,7 +17,7 @@ class UserReadSchema(BaseModel):
 # Схема пользователя
 class UserSchema(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     model_config = ConfigDict(
         extra="forbid"
@@ -23,7 +26,15 @@ class UserSchema(BaseModel):
 
 # Схема создания пользователя
 class UserCreateSchema(UserSchema):
-    confirm_password: str = Field(min_length=8, max_length=64)
+    confirm_password: str = Field(
+        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
+
+    @model_validator(mode="after")
+    def validate_passwords_match(self):
+        if self.password != self.confirm_password:
+            raise ValueError("Пароли не совпадают")
+        return self
 
 
 # Схема авторизации пользователя
@@ -31,14 +42,36 @@ class UserLoginSchema(UserSchema):
     pass
 
 
-class UserChangePasswordScheme(BaseModel):
-    current_password: str = Field(min_length=8, max_length=64)
-    new_password: str = Field(min_length=8, max_length=64)
-    confirm_password: str = Field(min_length=8, max_length=64)
+class UserChangePasswordSchema(BaseModel):
+    current_password: str = Field(
+        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
+    new_password: str = Field(
+        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
+    confirm_password: str = Field(
+        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
 
     model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_passwords_match(self):
+        if self.new_password != self.confirm_password:
+            raise ValueError("Пароли не совпадают")
+        return self
 
 
 class UserAddSchema(BaseModel):
     email: EmailStr
     hashed_password: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class UserInternalSchema(UserReadSchema):
+    hashed_password: str
+
+
+# Backward compatibility alias.
+UserChangePasswordScheme = UserChangePasswordSchema

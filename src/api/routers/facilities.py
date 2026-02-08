@@ -1,9 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 
-from exceptions import ObjectNotFoundException
+from src.exceptions import ObjectNotFoundException
 from src.database import SessionDep
 from src.repositories.facilities import FacilitiesRepository
-from src.schemas.facilities import FacilitiesReadSchema
+from src.schemas.facilities import FacilitiesReadSchema, FatilitiesAddSchema
 
 router = APIRouter(prefix="/facilities", tags=["Предметы в номерах"])
 
@@ -34,3 +34,18 @@ async def get_facility(facility_id: int, session: SessionDep):
         )
 
     return facility_model
+
+
+@router.post("", summary="Добавление предмета")
+async def delete_fatility(fatility: FatilitiesAddSchema, session: SessionDep):
+    try:
+        fatility_model = await FacilitiesRepository(session).add(fatility)
+    except ObjectIsAlreadyExistsException:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Предмет с таким названием уже существует",
+        )
+
+    await session.commit()
+
+    return fatility_model
