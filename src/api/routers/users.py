@@ -4,15 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
 from src.config import security
-from src.database import SessionDep
 from src.enums import UserRoles
 from src.exceptions import (
     ObjectIsAlreadyExistsException,
-    ObjectNotAllowedException,
     ObjectNotFoundException,
     ObjectNotValidException,
 )
-from src.repositories.users import UsersRepository
 from src.schemas.users import (
     UserAddSchema,
     UserChangePasswordSchema,
@@ -126,9 +123,9 @@ async def register_user(user: UserCreateSchema, db: DBDep):
 @router.post("/login", summary="Вход пользователя")
 async def user_login(user: UserLoginSchema, response: Response, db: DBDep):
     try:
-        new_user = await db.users.get_one_or_none(email=user.email)
-        if new_user is None or not AuthService().verify_password(
-            user.password, new_user.hashed_password
+        user = await db.users.get_one_or_none(email=user.email)
+        if user is None or not AuthService().verify_password(
+            user.password, user.hashed_password
         ):
             raise ObjectNotValidException
     except ObjectNotValidException:
@@ -137,8 +134,8 @@ async def user_login(user: UserLoginSchema, response: Response, db: DBDep):
             detail="Пользователя с такими данными не существует",
         )
 
-    access_token = AuthService.create_access_token(new_user.id)
-    refresh_token = AuthService.create_refresh_token(new_user.id)
+    access_token = AuthService.create_access_token(user.id)
+    refresh_token = AuthService.create_refresh_token(user.id)
 
     response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
     response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
