@@ -27,12 +27,11 @@ class BaseRepository:
         result = await self.session.execute(query)
 
         model = result.scalars().one_or_none()
-
-        # TODO: return None to raise ObjectNotFoundException
         if model is None:
             return None
 
         return self.mapper.map_to_domain_entity_pyd(model)
+
 
     async def add(self, data: BaseModel):
         try:

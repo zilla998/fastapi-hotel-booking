@@ -10,4 +10,4 @@ class DataMapper:
     @classmethod
     def map_to_entity_db(cls, data):
         """Превращаем схему Pydantic в SQLAlchemy модель"""
-        return cls.db_model(data.model_dump())
+        return cls.db_model(**data.model_dump())

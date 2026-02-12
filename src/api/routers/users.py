@@ -1,6 +1,7 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
+from services.users import UserService
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
 from src.config import security
@@ -11,7 +12,6 @@ from src.exceptions import (
     ObjectNotValidException,
 )
 from src.schemas.users import (
-    UserAddSchema,
     UserChangePasswordSchema,
     UserCreateSchema,
     UserLoginSchema,
@@ -43,13 +43,13 @@ async def get_current_user(
         )
 
     try:
-        user = await db.users.get_one_or_none(id=user_id)
-        if user is None:
-            raise ObjectNotFoundException()
+        db_user = await db.users.get_one_or_none(id=user_id)
+        if db_user is None:
+            raise ObjectNotFoundException
     except ObjectNotFoundException:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    return user
+    return db_user
 
 
 async def is_admin_required(
@@ -72,7 +72,8 @@ async def is_admin_required(
     ],
 )
 async def get_users(db: DBDep, pagination: PaginationDep):
-    return await db.users.get_all(limit=pagination.per_page, offset=pagination.page)
+    offset = (pagination.page - 1) * pagination.per_page
+    return await db.users.get_all(limit=pagination.per_page, offset=offset)
 
 
 @router.get(
@@ -103,47 +104,16 @@ async def get_user(user_id: int, db: DBDep):
     status_code=status.HTTP_201_CREATED,
 )
 async def register_user(user: UserCreateSchema, db: DBDep):
-    # 1. За хешировать пароль пользователя
-    hashed_password = AuthService().get_password_hash(user.password)
-    # 2. Добавить пользователя в БД
-    user_model_data = UserAddSchema(email=user.email, hashed_password=hashed_password)
-    try:
-        new_user = await db.users.add(user_model_data)
-    except ObjectIsAlreadyExistsException:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Пользователь с такой почтой уже существует",
-        )
+    if user.password != user.confirm_password:
+        raise ObjectNotValidException
 
-    await db.commit()
-    return new_user
+    user_data = await db.users.get_one_or_none(email=user.email)
+    if user_data:
+        raise ObjectIsAlreadyExistsException
+
+    return await UserService().create(db, user)
 
 
-# Вход пользователя в аккаунт
-@router.post("/login", summary="Вход пользователя")
-async def user_login(user: UserLoginSchema, response: Response, db: DBDep):
-    try:
-        user = await db.users.get_one_or_none(email=user.email)
-        if user is None or not AuthService().verify_password(
-            user.password, user.hashed_password
-        ):
-            raise ObjectNotValidException
-    except ObjectNotValidException:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пользователя с такими данными не существует",
-        )
-
-    access_token = AuthService.create_access_token(user.id)
-    refresh_token = AuthService.create_refresh_token(user.id)
-
-    response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
-    response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
-
-    return {"success": True}
-
-
-# Выход пользователя из аккаунта
 @router.post(
     "/change-password",
     summary="Смена пароля пользователя",
@@ -155,24 +125,49 @@ async def user_login(user: UserLoginSchema, response: Response, db: DBDep):
 async def user_change_password(
     credentials: UserChangePasswordSchema,
     db: DBDep,
+    response: Response,
     current_user=Depends(get_current_user),
 ):
-    if credentials.new_password != credentials.confirm_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Пароли не совпадают"
-        )
-
-    if current_user["hashed_password"] != credentials.current_password:
+    if not AuthService().verify_password(
+        credentials.current_password, current_user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Текущий пароль неверный"
         )
 
-    current_user["hashed_password"] = credentials.new_password
+    await UserService().change_password(db, current_user.id, credentials.new_password)
 
-    await db.commit()
+    response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
+    response.delete_cookie(authx_config.JWT_REFRESH_COOKIE_NAME)
+
     return {"message": "Пароль успешно изменен"}
 
 
+# Вход пользователя в аккаунт
+@router.post("/login", summary="Вход пользователя")
+async def user_login(user_in: UserLoginSchema, response: Response, db: DBDep):
+    try:
+        db_user = await db.users.get_one_or_none(email=user_in.email)
+        if db_user is None or not AuthService().verify_password(
+            user_in.password, db_user.hashed_password
+        ):
+            raise ObjectNotValidException
+    except ObjectNotValidException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователя с такими данными не существует",
+        )
+
+    access_token = AuthService.create_access_token(db_user.id)
+    refresh_token = AuthService.create_refresh_token(db_user.id)
+
+    response.set_cookie(authx_config.JWT_ACCESS_COOKIE_NAME, access_token)
+    response.set_cookie(authx_config.JWT_REFRESH_COOKIE_NAME, refresh_token)
+
+    return {"success": True}
+
+
+# Выход пользователя из аккаунта
 @router.post("/logout", summary="Выход пользователя")
 async def user_logout(response: Response):
     response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
