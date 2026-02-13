@@ -19,9 +19,7 @@ from src.schemas.users import (
 )
 from src.services.auth import AuthService
 
-router = APIRouter(
-    prefix="/users", tags=["Пользователи"]
-)  # Создаем отдельный router для users
+router = APIRouter(prefix="/users", tags=["Пользователи"])
 
 
 def require_access_cookie(request: Request) -> None:
@@ -55,12 +53,11 @@ async def get_current_user(
 async def is_admin_required(
     _: None = Depends(require_access_cookie), current_user=Depends(get_current_user)
 ) -> None:
-    if require_access_cookie:
-        if current_user.role != UserRoles.admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Доступ только для администратора",
-            )
+    if current_user.role != UserRoles.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ только для администратора",
+        )
 
 
 @router.get(
@@ -106,10 +103,15 @@ async def get_user(user_id: int, db: DBDep):
 async def register_user(user: UserCreateSchema, db: DBDep):
     if user.password != user.confirm_password:
         raise ObjectNotValidException
-
-    user_data = await db.users.get_one_or_none(email=user.email)
-    if user_data:
-        raise ObjectIsAlreadyExistsException
+    try:
+        user_data = await db.users.get_one_or_none(email=user.email)
+        if user_data:
+            raise ObjectIsAlreadyExistsException
+    except ObjectIsAlreadyExistsException:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Пользователь с email: {user.email} уже существует",
+        )
 
     return await UserService().create(db, user)
 
@@ -154,8 +156,8 @@ async def user_login(user_in: UserLoginSchema, response: Response, db: DBDep):
             raise ObjectNotValidException
     except ObjectNotValidException:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Пользователя с такими данными не существует",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверные данные для входа",
         )
 
     access_token = AuthService.create_access_token(db_user.id)
