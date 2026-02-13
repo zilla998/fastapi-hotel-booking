@@ -54,7 +54,7 @@ class BaseRepository:
 
         model = new_model
         await self.session.commit()
-        await self.session.refresh()
+        await self.session.refresh(model)
 
         return self.mapper.map_to_domain_entity_pyd(model)
 
