@@ -19,5 +19,4 @@ class UserService:
     @staticmethod
     async def change_password(db, user_id, new_password):
         new_hashed_password = AuthService().get_password_hash(new_password)
-        await db.users.set_password(user_id, new_hashed_password)
-        await db.commit()
+        await db.users.patch("hashed_password", new_hashed_password, id=user_id)

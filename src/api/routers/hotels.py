@@ -3,9 +3,7 @@ from fastapi.params import Depends
 
 from src.api.dependencies import DBDep, PaginationDep
 from src.api.routers.users import is_admin_required
-from src.database import SessionDep
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
-from src.repositories.hotels import HotelsRepository
 from src.schemas.hotels import ChangeHotelSchema, HotelsReadSchema, HotelsSchema
 
 router = APIRouter(prefix="/hotels", tags=["Отели"])

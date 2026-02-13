@@ -121,7 +121,6 @@ async def register_user(user: UserCreateSchema, db: DBDep):
     summary="Смена пароля пользователя",
     dependencies=[
         Depends(require_access_cookie),
-        Depends(security.access_token_required),
     ],
 )
 async def user_change_password(

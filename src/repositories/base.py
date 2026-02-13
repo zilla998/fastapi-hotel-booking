@@ -32,7 +32,6 @@ class BaseRepository:
 
         return self.mapper.map_to_domain_entity_pyd(model)
 
-
     async def add(self, data: BaseModel):
         try:
             query = insert(self.model).values(**data.model_dump()).returning(self.model)
@@ -69,3 +68,17 @@ class BaseRepository:
 
         await self.session.delete(model)
         await self.session.commit()
+
+    async def patch(self, column_name: str, new_value: str, **filter_by):
+        query = select(self.model).filter_by(**filter_by)
+        result = await self.session.execute(query)
+
+        model = result.scalar_one_or_none()
+        if model is None:
+            raise ObjectNotFoundException
+
+        setattr(model, column_name, new_value)
+        await self.session.commit()
+        await self.session.refresh(model)
+
+        return self.mapper.map_to_domain_entity_pyd(model)
