@@ -14,6 +14,7 @@ from src.api.routers.facilities import (
 from src.api.routers.hotels import router as hotels_router  # импортируем роутер hotels
 from src.api.routers.rooms import router as rooms_router  # импортируем роутер rooms
 from src.api.routers.users import router as users_router  # импортируем роутер users
+from src.api.routers.bookings import router as booking_router
 from src.config import config
 
 app = FastAPI()
@@ -39,6 +40,7 @@ app.include_router(users_router)  # Подключаем роутер users
 app.include_router(hotels_router)  # Подключаем роутер hotels
 app.include_router(rooms_router)  # Подключаем роутер rooms
 app.include_router(facilities_router)  # Подключаем роутер facilities
+app.include_router(booking_router)
 
 
 if __name__ == "__main__":

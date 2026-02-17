@@ -6,10 +6,12 @@ from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundExcepti
 from src.models.hotels import HotelsOrm
 from src.models.rooms import RoomsOrm
 from src.repositories.base import BaseRepository
+from src.repositories.mappers.mappers import RoomDataMapper
 
 
 class RoomsRepository(BaseRepository):
     model = RoomsOrm
+    mapper = RoomDataMapper
 
     async def add(self, data: BaseModel):
         hotel_query = select(HotelsOrm).filter_by(id=data.hotel_id)

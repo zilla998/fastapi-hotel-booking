@@ -82,3 +82,13 @@ class BaseRepository:
         await self.session.refresh(model)
 
         return self.mapper.map_to_domain_entity_pyd(model)
+
+    async def exists(self, *where_clauses, **filter_by) -> bool:
+        query = select(self.model.id).limit(1)
+        if where_clauses:
+            query = query.where(*where_clauses)
+        if filter_by:
+            query = query.filter_by(**filter_by)
+
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none() is not None
