@@ -6,22 +6,18 @@ from src.validators.booking import BookingValidator
 
 
 class BookingService:
-    @staticmethod
-    async def add_booking(booking, db, current_user):
-        if booking.date_from >= booking.date_to:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-                detail="date_from должен быть раньше date_to",
-            )
+    def __init__(self, session):
+        self.session = session
 
-        if await BookingValidator.has_overlapping_booking(booking, db):
+    async def add_booking(self, booking, current_user):
+        if await BookingValidator.has_overlapping_booking(booking, self.session):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Этот номер уже забронирован на выбранные даты.",
             )
 
         try:
-            room_data = await db.rooms.get_one_or_none(id=booking.room_id)
+            room_data = await self.session.rooms.get_one_or_none(id=booking.room_id)
             if room_data is None:
                 raise ObjectNotFoundException
         except ObjectNotFoundException:
@@ -33,7 +29,7 @@ class BookingService:
             user_id=current_user.id, **booking.model_dump(), price=room_data.price
         )
 
-        created_booking = await db.booking.add(new_booking)
-        await db.commit()
+        created_booking = await self.session.booking.add(new_booking)
+        await self.session.commit()
 
         return created_booking

@@ -26,4 +26,4 @@ async def hotel_reservation(
     db: DBDep,
     current_user=Depends(get_current_user),
 ):
-    return await BookingService().add_booking(booking, db, current_user)
+    return await BookingService(db).add_booking(booking, current_user)
