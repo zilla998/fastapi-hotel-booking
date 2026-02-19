@@ -32,9 +32,10 @@ class BaseRepository:
 
         return self.mapper.map_to_domain_entity_pyd(model)
 
-    async def add(self, data: BaseModel):
+    async def add(self, data: BaseModel | dict):
+        payload = data.model_dump() if isinstance(data, BaseModel) else data
         try:
-            query = insert(self.model).values(**data.model_dump()).returning(self.model)
+            query = insert(self.model).values(**payload).returning(self.model)
             model = await self.session.execute(query)
             return self.mapper.map_to_domain_entity_pyd(model.scalars().one())
         except IntegrityError:

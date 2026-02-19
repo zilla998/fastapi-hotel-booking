@@ -1,7 +1,6 @@
 from fastapi import HTTPException, status
 
 from src.exceptions import ObjectNotFoundException
-from src.schemas.booking import BookingAddSchema
 from src.validators.booking import BookingValidator
 
 
@@ -25,9 +24,11 @@ class BookingService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
             )
 
-        new_booking = BookingAddSchema(
-            user_id=current_user.id, **booking.model_dump(), price=room_data.price
-        )
+        new_booking = {
+            "user_id": current_user.id,
+            **booking.model_dump(),
+            "price": room_data.price,
+        }
 
         created_booking = await self.session.booking.add(new_booking)
         await self.session.commit()
