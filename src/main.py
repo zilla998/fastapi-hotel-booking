@@ -17,7 +17,17 @@ from src.api.routers.users import router as users_router  # импортируе
 from src.api.routers.bookings import router as booking_router
 from src.config import config
 
-app = FastAPI()
+from contextlib import asynccontextmanager
+from src.kafka.producer import get_producer, stop_producer
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await get_producer()  # запускаем при старте
+    yield
+    await stop_producer()  # останавливаем при завершении
+
+app = FastAPI(lifespan=lifespan)
 
 # Добавляем SessionMiddleware, необходимый для sqladmin
 app.add_middleware(SessionMiddleware, secret_key=config.JWT_SECRET_KEY)

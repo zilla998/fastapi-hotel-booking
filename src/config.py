@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASS: str
     DB_HOST: str
+    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
 
     @property
     def DB_URL(self):

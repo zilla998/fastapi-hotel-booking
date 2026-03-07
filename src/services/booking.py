@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 
 from src.exceptions import ObjectNotFoundException
+from src.kafka.producer import get_producer
 from src.validators.booking import BookingValidator
 
 
@@ -32,5 +33,16 @@ class BookingService:
 
         created_booking = await self.session.booking.add(new_booking)
         await self.session.commit()
+
+        producer = await get_producer()
+        await producer.send_and_wait(
+            "booking.created",
+            {
+                "booking_id": created_booking.id,
+                "user_id": current_user.id,
+                "room_id": booking.room_id,
+                "message": "Номер успешно забронирован",
+            },
+        )  # Эта функция с гарантией доставки, а send() без гарантии доставки
 
         return created_booking
