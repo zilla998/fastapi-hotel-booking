@@ -1,7 +1,7 @@
 from fastapi import HTTPException, status
 
 from src.exceptions import ObjectNotFoundException
-from src.kafka.producer import get_producer
+from src.kafka.producer import booking_created_publisher
 from src.validators.booking import BookingValidator
 
 
@@ -34,9 +34,7 @@ class BookingService:
         created_booking = await self.session.booking.add(new_booking)
         await self.session.commit()
 
-        producer = await get_producer()
-        await producer.send_and_wait(
-            "booking.created",
+        await booking_created_publisher.publish(
             {
                 "booking_id": created_booking.id,
                 "user_id": current_user.id,

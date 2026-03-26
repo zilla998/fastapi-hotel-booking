@@ -7,25 +7,28 @@ from starlette.middleware.sessions import SessionMiddleware
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+from contextlib import asynccontextmanager
+
 from src.admin import setup_admin
+from src.api.routers.bookings import router as booking_router
 from src.api.routers.facilities import (
     router as facilities_router,
-)  # импортируем роутер facilities
-from src.api.routers.hotels import router as hotels_router  # импортируем роутер hotels
-from src.api.routers.rooms import router as rooms_router  # импортируем роутер rooms
-from src.api.routers.users import router as users_router  # импортируем роутер users
-from src.api.routers.bookings import router as booking_router
+)
+from src.api.routers.hotels import router as hotels_router
+from src.api.routers.rooms import router as rooms_router
+from src.api.routers.users import router as users_router
 from src.config import config
-
-from contextlib import asynccontextmanager
-from src.kafka.producer import get_producer, stop_producer
+from src.kafka.consumer import router as kafka_router
+from src.kafka.producer import broker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await get_producer()  # запускаем при старте
+    broker.include_router(kafka_router)  # Подключаем Kafka-router
+    await broker.start()  # запускаем брокер
     yield
-    await stop_producer()  # останавливаем при завершении
+    await broker.close()  # останавливаем при завершении
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -46,12 +49,11 @@ async def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
-app.include_router(users_router)  # Подключаем роутер users
-app.include_router(hotels_router)  # Подключаем роутер hotels
-app.include_router(rooms_router)  # Подключаем роутер rooms
-app.include_router(facilities_router)  # Подключаем роутер facilities
+app.include_router(users_router)
+app.include_router(hotels_router)
+app.include_router(rooms_router)
+app.include_router(facilities_router)
 app.include_router(booking_router)
-
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True, log_level="info")

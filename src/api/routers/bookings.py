@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from src.api.dependencies import DBDep
 from src.api.routers.users import get_current_user, require_access_cookie
 from src.exceptions import ObjectNotFoundException
-from src.kafka.producer import get_producer
+from src.kafka.producer import booking_delete_publisher
 from src.schemas.booking import BookingCreateSchema, BookingReadSchema
 from src.services.booking import BookingService
 
@@ -23,7 +23,7 @@ async def get_all_booking(db: DBDep):
     response_model=BookingReadSchema,
     dependencies=[Depends(require_access_cookie)],
 )
-async def hotel_reservation(
+async def add_booking(
     booking: BookingCreateSchema,
     db: DBDep,
     current_user=Depends(get_current_user),
@@ -42,11 +42,9 @@ async def delete_booking(booking_id: int, db: DBDep):
     except ObjectNotFoundException:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    producer = await get_producer()
-    await producer.send_and_wait(
-        "booking.delete",
+    await booking_delete_publisher.publish(
         {
             "booking_id": booking_id,
             "message": "Бронь успешно отменена",
         },
-    )  # Эта функция с гарантией доставки, а send() без гарантии доставки
+    )

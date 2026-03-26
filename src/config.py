@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASS: str
     DB_HOST: str
-    KAFKA_BOOTSTRAP_SERVERS: str = "kafka:9092"
 
     @property
     def DB_URL(self):
@@ -19,9 +18,6 @@ class Settings(BaseSettings):
 
     _env_path = Path(__file__).resolve().parent.parent / ".env"
     model_config = SettingsConfigDict(env_file=_env_path, env_file_encoding="utf-8")
-
-    # Так не смогло найти .env
-    # model_config = SettingsConfigDict(env_file='.env')
 
 
 settings = Settings()
