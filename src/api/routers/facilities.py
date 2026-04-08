@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
 from src.database import SessionDep
-from src.exceptions import ObjectNotFoundException
+from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.repositories.facilities import FacilitiesRepository
 from src.schemas.facilities import FacilitiesReadSchema, FatilitiesAddSchema
 
@@ -37,7 +37,7 @@ async def get_facility(facility_id: int, session: SessionDep):
 
 
 @router.post("", summary="Добавление предмета")
-async def delete_fatility(fatility: FatilitiesAddSchema, session: SessionDep):
+async def add_fatility(fatility: FatilitiesAddSchema, session: SessionDep):
     try:
         fatility_model = await FacilitiesRepository(session).add(fatility)
     except ObjectIsAlreadyExistsException:

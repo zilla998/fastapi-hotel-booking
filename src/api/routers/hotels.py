@@ -63,11 +63,10 @@ async def change_hotel(hotel_id: int, new_hotel: ChangeHotelSchema, db: DBDep):
             detail="Отель с таким id не существует",
         )
 
-    old_hotel_model = new_hotel
-
+    update_hotel = await db.hotels.edit(new_hotel, id=hotel_id)
     await db.commit()
 
-    return new_hotel
+    return update_hotel
 
 
 @router.delete(

@@ -49,11 +49,13 @@ async def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
+# routers
 app.include_router(users_router)
 app.include_router(hotels_router)
 app.include_router(rooms_router)
 app.include_router(facilities_router)
 app.include_router(booking_router)
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", reload=True, log_level="info")

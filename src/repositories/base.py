@@ -13,8 +13,10 @@ class BaseRepository:
     def __init__(self, session):
         self.session = session
 
-    async def get_all(self, limit=10, offset=0):
+    async def get_all(self, limit=10, offset=0, **filter_by):
         query = select(self.model)
+        if filter_by:
+            query = query.filter_by(**filter_by)
         query = query.limit(limit).offset(offset)
         result = await self.session.execute(query)
         return [

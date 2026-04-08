@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-from schemas.rooms import RoomSchema
+from src.schemas.rooms import RoomSchema
 
 
 class FacilitiesReadSchema(BaseModel):

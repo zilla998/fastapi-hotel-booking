@@ -1,7 +1,6 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from services.users import UserService
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
 from src.config import security
@@ -18,6 +17,7 @@ from src.schemas.users import (
     UserReadSchema,
 )
 from src.services.auth import AuthService
+from src.services.users import UserService
 
 router = APIRouter(prefix="/users", tags=["Пользователи"])
 

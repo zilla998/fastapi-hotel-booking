@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
-from api.routers.users import is_admin_required, require_access_cookie
+from src.api.routers.users import is_admin_required
 from src.database import SessionDep
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.repositories.rooms import RoomsRepository
@@ -62,9 +62,8 @@ async def change_room(room_id: int, new_room: ChangeRoomSchema, session: Session
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
         )
-    room_model.update_from_orm(new_room)
-    await session.commit()
-    return room_model
+    updated_room = await RoomsRepository(session).edit(new_room, id=room_id)
+    return updated_room
 
 
 @router.delete(
@@ -82,6 +81,6 @@ async def delete_room(room_id: int, session: SessionDep):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
         )
-    del room_model
+    await RoomsRepository.delete(id=room_id)
     await session.commit()
     return {"success": True}
