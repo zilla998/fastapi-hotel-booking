@@ -1,5 +1,6 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from watchfiles import awatch
 
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
@@ -71,6 +72,19 @@ async def is_admin_required(
 async def get_users(db: DBDep, pagination: PaginationDep):
     offset = (pagination.page - 1) * pagination.per_page
     return await db.users.get_all(limit=pagination.per_page, offset=offset)
+
+
+@router.get(
+    "/me",
+    summary="Профиль текущего пользователя",
+    dependencies=[
+        Depends(require_access_cookie),
+    ],
+    response_model=UserReadSchema,
+)
+async def get_my_profile(db: DBDep, current_user=Depends(get_current_user)):
+    """Получение профиля текущего пользователя"""
+    return await db.users.get_one_or_none(id=current_user.id)
 
 
 @router.get(
