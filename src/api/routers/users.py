@@ -1,6 +1,5 @@
 from authx import TokenPayload
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from watchfiles import awatch
 
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
