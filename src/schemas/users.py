@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 PASSWORD_MIN_LENGTH = 8
@@ -17,7 +19,9 @@ class UserReadSchema(BaseModel):
 # Схема пользователя
 class UserSchema(BaseModel):
     email: EmailStr
-    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    password: str = Field(
+        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
+    )
 
     model_config = ConfigDict(
         extra="forbid"
@@ -71,6 +75,12 @@ class UserAddSchema(BaseModel):
 
 class UserInternalSchema(UserReadSchema):
     hashed_password: str
+
+
+class UserPatchProfileSchema(BaseModel):
+    email: Optional[EmailStr] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 
 # Backward compatibility alias.

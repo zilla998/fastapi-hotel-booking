@@ -72,6 +72,24 @@ class BaseRepository:
         await self.session.delete(model)
         await self.session.commit()
 
+    async def patch_partial(self, data: BaseModel, **filter_by):
+        fields = data.model_dump(exclude_unset=True)
+        if not fields:
+            return await self.get_one_or_none(**filter_by)
+
+        query = select(self.model).filter_by(**filter_by)
+        result = await self.session.execute(query)
+        model = result.scalar_one_or_none()
+        if model is None:
+            raise ObjectNotFoundException
+
+        for key, value in fields.items():
+            setattr(model, key, value)
+
+        await self.session.commit()
+        await self.session.refresh(model)
+        return self.mapper.map_to_domain_entity_pyd(model)
+
     async def patch(self, column_name: str, new_value: str, **filter_by):
         query = select(self.model).filter_by(**filter_by)
         result = await self.session.execute(query)

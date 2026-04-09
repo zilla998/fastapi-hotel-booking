@@ -14,6 +14,7 @@ from src.schemas.users import (
     UserChangePasswordSchema,
     UserCreateSchema,
     UserLoginSchema,
+    UserPatchProfileSchema,
     UserReadSchema,
 )
 from src.services.auth import AuthService
@@ -127,6 +128,22 @@ async def register_user(user: UserCreateSchema, db: DBDep):
         )
 
     return await UserService().create(db, user)
+
+
+@router.patch(
+    "/me",
+    summary="Редактирование профиля",
+    dependencies=[
+        Depends(require_access_cookie),
+    ],
+)
+async def user_profile_patch(
+    credentials: UserPatchProfileSchema,
+    db: DBDep,
+    current_user=Depends(get_current_user),
+):
+    """Редактирование профиля пользователя."""
+    return await db.users.patch_partial(credentials, id=current_user.id)
 
 
 @router.post(
