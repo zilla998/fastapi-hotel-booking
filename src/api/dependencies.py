@@ -1,9 +1,14 @@
 from typing import Annotated
 
-from fastapi import Depends, Query
+from authx import TokenPayload
+from fastapi import Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 
+from src.config import config as authx_config
+from src.config import security
 from src.database import async_session_maker
+from src.enums import ErrorCode, UserRoles
+from src.exceptions import ObjectNotFoundException
 from src.utils.db_manager import DbManager
 
 
@@ -24,3 +29,48 @@ class PaginationParams(BaseModel):
 
 
 PaginationDep = Annotated[PaginationParams, Depends()]
+
+
+def require_access_cookie(request: Request) -> None:
+    if not request.cookies.get(authx_config.JWT_ACCESS_COOKIE_NAME):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": ErrorCode.UNAUTHORIZED},
+        )
+
+
+async def get_current_user(
+    payload: TokenPayload = Depends(security.access_token_required), db: DBDep = None
+):
+    try:
+        user_id = int(payload.sub)
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": ErrorCode.UNAUTHORIZED},
+        )
+
+    try:
+        db_user = await db.users.get_one_or_none(id=user_id)
+        if db_user is None:
+            raise ObjectNotFoundException
+    except ObjectNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": ErrorCode.USER_NOT_FOUND},
+        )
+
+    return db_user
+
+
+async def is_admin_required(
+    _: None = Depends(require_access_cookie), current_user=Depends(get_current_user)
+) -> None:
+    if current_user.role != UserRoles.admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": ErrorCode.FORBIDDEN},
+        )
+
+
+CurrentUserDep = Annotated[object, Depends(get_current_user)]

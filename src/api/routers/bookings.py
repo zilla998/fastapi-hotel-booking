@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.dependencies import DBDep, PaginationDep
-from src.api.routers.users import get_current_user, require_access_cookie
+from src.api.dependencies import DBDep, PaginationDep, get_current_user, require_access_cookie
 from src.exceptions import ObjectNotFoundException
 from src.kafka.producer import booking_delete_publisher
 from src.schemas.booking import BookingCreateSchema, BookingReadSchema

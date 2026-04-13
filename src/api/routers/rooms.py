@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
-from src.api.routers.users import is_admin_required
+from src.api.dependencies import is_admin_required
 from src.database import SessionDep
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.repositories.rooms import RoomsRepository

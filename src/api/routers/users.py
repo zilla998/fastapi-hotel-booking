@@ -1,10 +1,16 @@
 from authx import TokenPayload
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 
-from src.api.dependencies import DBDep, PaginationDep
+from src.api.dependencies import (
+    DBDep,
+    PaginationDep,
+    get_current_user,
+    is_admin_required,
+    require_access_cookie,
+)
 from src.config import config as authx_config
 from src.config import security
-from src.enums import ErrorCode, UserRoles
+from src.enums import ErrorCode
 from src.exceptions import (
     ObjectIsAlreadyExistsException,
     ObjectNotFoundException,
@@ -21,48 +27,6 @@ from src.services.auth import AuthService
 from src.services.users import UserService
 
 router = APIRouter(prefix="/users", tags=["Пользователи"])
-
-
-def require_access_cookie(request: Request) -> None:
-    if not request.cookies.get(authx_config.JWT_ACCESS_COOKIE_NAME):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": ErrorCode.UNAUTHORIZED},
-        )
-
-
-async def get_current_user(
-    payload: TokenPayload = Depends(security.access_token_required), db: DBDep = None
-):
-    try:
-        user_id = int(payload.sub)
-    except (TypeError, ValueError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": ErrorCode.UNAUTHORIZED},
-        )
-
-    try:
-        db_user = await db.users.get_one_or_none(id=user_id)
-        if db_user is None:
-            raise ObjectNotFoundException
-    except ObjectNotFoundException:
-        raise HTTPException(
-            status_code=404,
-            detail={"code": ErrorCode.USER_NOT_FOUND},
-        )
-
-    return db_user
-
-
-async def is_admin_required(
-    _: None = Depends(require_access_cookie), current_user=Depends(get_current_user)
-) -> None:
-    if current_user.role != UserRoles.admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": ErrorCode.FORBIDDEN},
-        )
 
 
 @router.get(

@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
-from src.api.dependencies import DBDep, PaginationDep
-from src.api.routers.users import is_admin_required
+from src.api.dependencies import DBDep, PaginationDep, is_admin_required
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.schemas.hotels import ChangeHotelSchema, HotelsReadSchema, HotelsSchema
 
