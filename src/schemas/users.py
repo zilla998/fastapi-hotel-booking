@@ -13,23 +13,19 @@ class UserReadSchema(BaseModel):
     is_active: bool
     created_at: str
 
-    model_config = ConfigDict(from_attributes=True)  # Разрешаем читать ORM-объекты
+    model_config = ConfigDict(from_attributes=True)
 
 
-# Схема пользователя
-class UserSchema(BaseModel):
+class UserLoginSchema(BaseModel):
     email: EmailStr
     password: str = Field(
         min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
     )
 
-    model_config = ConfigDict(
-        extra="forbid"
-    )  # Запрещаем передавать дополнительные параметры кроме тех которые указаны в схеме
+    model_config = ConfigDict(extra="forbid")
 
 
-# Схема создания пользователя
-class UserCreateSchema(UserSchema):
+class UserCreateSchema(UserLoginSchema):
     confirm_password: str = Field(
         min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
     )
@@ -39,11 +35,6 @@ class UserCreateSchema(UserSchema):
         if self.password != self.confirm_password:
             raise ValueError("Пароли не совпадают")
         return self
-
-
-# Схема авторизации пользователя
-class UserLoginSchema(UserSchema):
-    pass
 
 
 class UserChangePasswordSchema(BaseModel):
@@ -81,7 +72,3 @@ class UserPatchProfileSchema(BaseModel):
     email: Optional[EmailStr] = None
 
     model_config = ConfigDict(extra="forbid")
-
-
-# Backward compatibility alias.
-UserChangePasswordScheme = UserChangePasswordSchema
