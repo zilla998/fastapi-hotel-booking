@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from src.api.dependencies import DBDep, PaginationDep
 from src.config import config as authx_config
 from src.config import security
-from src.enums import UserRoles
+from src.enums import ErrorCode, UserRoles
 from src.exceptions import (
     ObjectIsAlreadyExistsException,
     ObjectNotFoundException,
@@ -27,7 +27,7 @@ def require_access_cookie(request: Request) -> None:
     if not request.cookies.get(authx_config.JWT_ACCESS_COOKIE_NAME):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Доступ разрешен только авторизованным пользователям!",
+            detail={"code": ErrorCode.UNAUTHORIZED},
         )
 
 
@@ -38,7 +38,8 @@ async def get_current_user(
         user_id = int(payload.sub)
     except (TypeError, ValueError):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Некорректный токен"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": ErrorCode.UNAUTHORIZED},
         )
 
     try:
@@ -46,7 +47,10 @@ async def get_current_user(
         if db_user is None:
             raise ObjectNotFoundException
     except ObjectNotFoundException:
-        raise HTTPException(status_code=404, detail="Пользователь не найден")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND},
+        )
 
     return db_user
 
@@ -57,7 +61,7 @@ async def is_admin_required(
     if current_user.role != UserRoles.admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Доступ только для администратора",
+            detail={"code": ErrorCode.FORBIDDEN},
         )
 
 
@@ -103,7 +107,7 @@ async def get_user(user_id: int, db: DBDep):
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Пользователь с id: {user_id} не найден",
+            detail={"code": ErrorCode.USER_NOT_FOUND},
         )
     return user
 
@@ -124,7 +128,7 @@ async def register_user(user: UserCreateSchema, db: DBDep):
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Пользователь с email: {user.email} уже существует",
+            detail={"code": ErrorCode.EMAIL_ALREADY_EXISTS},
         )
 
     return await UserService().create(db, user)
@@ -163,7 +167,8 @@ async def user_change_password(
         credentials.current_password, current_user.hashed_password
     ):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Текущий пароль неверный"
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": ErrorCode.INVALID_CREDENTIALS},
         )
 
     await UserService().change_password(db, current_user.id, credentials.new_password)
@@ -186,7 +191,7 @@ async def user_login(user_in: UserLoginSchema, response: Response, db: DBDep):
     except ObjectNotValidException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверные данные для входа",
+            detail={"code": ErrorCode.INVALID_CREDENTIALS},
         )
 
     access_token = AuthService.create_access_token(db_user.id)
@@ -219,7 +224,7 @@ async def delete_user(user_id: int, db: DBDep):
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Пользователь с id: {user_id} не найден",
+            detail={"code": ErrorCode.USER_NOT_FOUND},
         )
 
 
