@@ -1,13 +1,14 @@
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
+
+sys.path.append(str(Path(__file__).parent.parent))
 
 import uvicorn
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
-sys.path.append(str(Path(__file__).parent.parent))
-
-from contextlib import asynccontextmanager
+from src.cache import close_redis, init_redis
 
 from src.admin import setup_admin
 from src.api.routers.bookings import router as booking_router
@@ -17,17 +18,20 @@ from src.api.routers.facilities import (
 from src.api.routers.hotels import router as hotels_router
 from src.api.routers.rooms import router as rooms_router
 from src.api.routers.users import router as users_router
-from src.config import config
+from src.config import config, settings
 from src.kafka.consumer import router as kafka_router
 from src.kafka.producer import broker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await init_redis(settings.REDIS_URL)  # Запускаем redis
+    
     broker.include_router(kafka_router)  # Подключаем Kafka-router
     await broker.start()  # запускаем брокер
     yield
     await broker.close()  # останавливаем при завершении
+    await close_redis()
 
 
 app = FastAPI(lifespan=lifespan)

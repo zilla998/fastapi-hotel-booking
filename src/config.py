@@ -12,8 +12,15 @@ class Settings(BaseSettings):
     DB_PASS: str
     DB_HOST: str
 
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+
     @property
-    def DB_URL(self):
+    def REDIS_URL(self) -> str:
+        return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}"
+
+    @property
+    def DB_URL(self) -> str:
         return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
     _env_path = Path(__file__).resolve().parent.parent / ".env"

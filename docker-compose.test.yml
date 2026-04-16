@@ -51,15 +51,15 @@ services:
       kafka:
         condition: service_healthy
 
-#  redis:
-#    image: redis:8.4.0-alpine
-#    restart: always
-#    ports:
-#      - "6379:6379"
-#    volumes:
-#      - redis_data:/data
+  redis:
+    image: redis:8.4.0-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
 
 volumes:
   postgres_data:
-#  redis_data:
-#    driver: local
+  redis_data:
+    driver: local
