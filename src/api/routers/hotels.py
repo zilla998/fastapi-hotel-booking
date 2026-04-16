@@ -3,7 +3,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
-from pip._internal.utils import retry
 from redis.asyncio import Redis
 
 from src.api.dependencies import DBDep, PaginationDep, is_admin_required
