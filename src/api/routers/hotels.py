@@ -1,18 +1,15 @@
-import json
-from typing import Annotated
-
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
-from redis.asyncio import Redis
 
-from src.api.dependencies import DBDep, PaginationDep, is_admin_required
-from src.cache import get_redis
+from src.api.dependencies import (
+    HotelsServiceDep,
+    PaginationDep,
+    is_admin_required,
+)
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
 from src.schemas.hotels import ChangeHotelSchema, HotelsReadSchema, HotelsSchema
 
 router = APIRouter(prefix="/hotels", tags=["Отели"])
-
-RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 @router.get(
@@ -20,39 +17,21 @@ RedisDep = Annotated[Redis, Depends(get_redis)]
     summary="Получение списка отелей",
     response_model=list[HotelsReadSchema],
 )
-async def get_hotels(
-    db: DBDep,
-    pagination: PaginationDep,
-    redis: RedisDep,
-):
-    cache_key = f"hotels:list:page={pagination.page}:per_page={pagination.per_page}"
-    cached = await redis.get(cache_key)
-
-    if cached:
-        return json.loads(cached)
-
-    hotels = await db.hotels.get_all(limit=pagination.per_page, offset=pagination.page)
-
-    hotels_data = [hotel.model_dump() for hotel in hotels]
-
-    await redis.set(cache_key, json.dumps(hotels_data), ex=300)
-
-    return hotels
+async def get_hotels(pagination: PaginationDep, service: HotelsServiceDep):
+    return await service.get_all(pagination)
 
 
-@router.get("/{hotel_id}", summary="Получение отеля по id")
-async def get_hotel(hotel_id: int, db: DBDep):
+@router.get(
+    "/{hotel_id}",
+    summary="Получение отеля по id",
+)
+async def get_hotel(hotel_id: int, service: HotelsServiceDep):
     try:
-        hotel = await db.hotels.get_one_or_none(id=hotel_id)
-        if hotel is None:
-            raise ObjectNotFoundException
+        return await service.get_by_id(hotel_id)
     except ObjectNotFoundException:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Отеля с id: {hotel_id} не существует",
+            status_code=404, detail=f"Отеля с id: {hotel_id} не существует"
         )
-
-    return hotel
 
 
 @router.post(
@@ -60,23 +39,15 @@ async def get_hotel(hotel_id: int, db: DBDep):
 )
 async def add_hotel(
     hotel: HotelsSchema,
-    db: DBDep,
-    redis: RedisDep,
+    service: HotelsServiceDep,
 ):
     try:
-        await db.hotels.add(hotel)
+        return await service.add(hotel)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Отель с таким названием уже существует",
         )
-    await db.commit()
-
-    keys = await redis.keys("hotels:list:*")
-    if keys:
-        await redis.delete(*keys)
-
-    return hotel
 
 
 @router.patch(
@@ -85,11 +56,10 @@ async def add_hotel(
 async def change_hotel(
     hotel_id: int,
     new_hotel: ChangeHotelSchema,
-    db: DBDep,
-    redis: RedisDep,
+    service: HotelsServiceDep,
 ):
     try:
-        old_hotel_model = await db.hotels.get_one_or_none(id=hotel_id)
+        old_hotel_model = await service.db.hotels.get_one_or_none(id=hotel_id)
         if old_hotel_model is None:
             raise ObjectNotFoundException()
     except ObjectNotFoundException:
@@ -98,12 +68,12 @@ async def change_hotel(
             detail="Отель с таким id не существует",
         )
 
-    update_hotel = await db.hotels.edit(new_hotel, id=hotel_id)
-    await db.commit()
+    update_hotel = await service.db.hotels.edit(new_hotel, id=hotel_id)
+    await service.db.commit()
 
-    keys = await redis.keys("hotels:list:*")
+    keys = await service.redis.keys("hotels:list:*")
     if keys:
-        await redis.delete(*keys)
+        await service.redis.delete(*keys)
 
     return update_hotel
 
@@ -113,11 +83,10 @@ async def change_hotel(
 )
 async def delete_hotel(
     hotel_id: int,
-    db: DBDep,
-    redis: RedisDep,
+    service: HotelsServiceDep,
 ):
     try:
-        hotel_model = await db.hotels.get_one_or_none(id=hotel_id)
+        hotel_model = await service.db.hotels.get_one_or_none(id=hotel_id)
         if hotel_model is None:
             raise ObjectNotFoundException
     except ObjectNotFoundException:
@@ -126,9 +95,9 @@ async def delete_hotel(
             detail="Отель с таким id не существует",
         )
 
-    await db.hotels.delete(id=hotel_id)
-    await db.commit()
+    await service.db.hotels.delete(id=hotel_id)
+    await service.db.commit()
 
-    keys = await redis.keys("hotels:list:*")
+    keys = await service.redis.keys("hotels:list:*")
     if keys:
-        await redis.delete(*keys)
+        await service.redis.delete(*keys)

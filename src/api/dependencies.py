@@ -3,13 +3,18 @@ from typing import Annotated
 from authx import TokenPayload
 from fastapi import Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
+from redis.asyncio import Redis
 
+from src.cache import get_redis
 from src.config import config as authx_config
 from src.config import security
 from src.database import async_session_maker
 from src.enums import ErrorCode, UserRoles
 from src.exceptions import ObjectNotFoundException
+from src.services.hotels import HotelsService
 from src.utils.db_manager import DbManager
+
+RedisDep = Annotated[Redis, Depends(get_redis)]
 
 
 async def get_db():
@@ -18,6 +23,13 @@ async def get_db():
 
 
 DBDep = Annotated[DbManager, Depends(get_db)]
+
+
+def get_hotels_service(db: DBDep, redis: RedisDep) -> HotelsService:
+    return HotelsService(db, redis)
+
+
+HotelsServiceDep = Annotated[HotelsService, Depends(get_hotels_service)]
 
 
 class PaginationParams(BaseModel):
