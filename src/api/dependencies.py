@@ -57,11 +57,15 @@ FacilitiesServiceDep = Annotated[FacilitiesService, Depends(get_facilities_servi
 
 
 class PaginationParams(BaseModel):
-    page: Annotated[int | None, Query(1, ge=1, description="Страница")]
+    page: Annotated[int, Query(ge=1, description="Страница")] = 1
     per_page: Annotated[
-        int | None,
-        Query(5, ge=1, le=100, description="Количество объектов на странице"),
-    ]
+        int,
+        Query(ge=1, le=100, description="Количество объектов на странице"),
+    ] = 5
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.per_page
 
 
 PaginationDep = Annotated[PaginationParams, Depends()]

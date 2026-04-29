@@ -19,11 +19,10 @@ async def get_my_bookings(
     current_user=Depends(get_current_user),
 ):
     """Возвращает список броней текущего авторизованного пользователя."""
-    offset = (pagination.page - 1) * pagination.per_page
     return await service.get_user_bookings(
         user_id=current_user.id,
         limit=pagination.per_page,
-        offset=offset,
+        offset=pagination.offset,
     )
 
 

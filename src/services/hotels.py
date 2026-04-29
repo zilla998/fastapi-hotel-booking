@@ -16,7 +16,7 @@ class HotelsService:
             return json.loads(cached)
 
         hotels = await self.db.hotels.get_all(
-            limit=pagination.per_page, offset=pagination.page
+            limit=pagination.per_page, offset=pagination.offset
         )
         await self.redis.set(
             cache_key, json.dumps([h.model_dump() for h in hotels]), ex=300

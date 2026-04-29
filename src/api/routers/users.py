@@ -38,8 +38,11 @@ router = APIRouter(prefix="/users", tags=["Пользователи"])
     ],
 )
 async def get_users(db: DBDep, pagination: PaginationDep):
-    offset = (pagination.page - 1) * pagination.per_page
-    return await UserService.get_all(db, limit=pagination.per_page, offset=offset)
+    return await UserService.get_all(
+        db,
+        limit=pagination.per_page,
+        offset=pagination.offset,
+    )
 
 
 @router.get(
