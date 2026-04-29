@@ -1,7 +1,9 @@
-from fastapi import HTTPException, status
-
-from src.exceptions import ObjectNotFoundException
-from src.kafka.producer import booking_created_publisher
+from src.exceptions import (
+    ObjectIsAlreadyExistsException,
+    ObjectNotAllowedException,
+    ObjectNotFoundException,
+)
+from src.kafka.producer import booking_created_publisher, booking_delete_publisher
 from src.validators.booking import BookingValidator
 
 
@@ -9,21 +11,35 @@ class BookingService:
     def __init__(self, session):
         self.session = session
 
+    async def get_user_bookings(self, user_id: int, limit: int, offset: int):
+        return await self.session.booking.get_user_bookings(
+            user_id=user_id, limit=limit, offset=offset
+        )
+
+    async def delete_booking(self, booking_id: int, user_id: int):
+        booking = await self.session.booking.get_one_or_none(id=booking_id)
+        if booking is None:
+            raise ObjectNotFoundException
+        if booking.user_id != user_id:
+            raise ObjectNotAllowedException
+
+        await self.session.booking.delete(id=booking_id)
+        await self.session.commit()
+
+        await booking_delete_publisher.publish(
+            {
+                "booking_id": booking_id,
+                "message": "Бронь успешно отменена",
+            },
+        )
+
     async def add_booking(self, booking, current_user):
         if await BookingValidator.has_overlapping_booking(booking, self.session):
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Этот номер уже забронирован на выбранные даты.",
-            )
+            raise ObjectIsAlreadyExistsException
 
-        try:
-            room_data = await self.session.rooms.get_one_or_none(id=booking.room_id)
-            if room_data is None:
-                raise ObjectNotFoundException
-        except ObjectNotFoundException:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
-            )
+        room_data = await self.session.rooms.get_one_or_none(id=booking.room_id)
+        if room_data is None:
+            raise ObjectNotFoundException
 
         new_booking = {
             "user_id": current_user.id,
@@ -41,6 +57,6 @@ class BookingService:
                 "room_id": booking.room_id,
                 "message": "Номер успешно забронирован",
             },
-        )  # Эта функция с гарантией доставки, а send() без гарантии доставки
+        )
 
         return created_booking

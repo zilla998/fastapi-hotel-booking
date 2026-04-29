@@ -1,10 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.dependencies import DBDep, PaginationDep, get_current_user, require_access_cookie
-from src.exceptions import ObjectNotFoundException
-from src.kafka.producer import booking_delete_publisher
+from src.api.dependencies import BookingServiceDep, PaginationDep, get_current_user, require_access_cookie
+from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotAllowedException, ObjectNotFoundException
 from src.schemas.booking import BookingCreateSchema, BookingReadSchema
-from src.services.booking import BookingService
 
 router = APIRouter(prefix="/bookings", tags=["Бронирование"])
 
@@ -16,13 +14,13 @@ router = APIRouter(prefix="/bookings", tags=["Бронирование"])
     dependencies=[Depends(require_access_cookie)],
 )
 async def get_my_bookings(
-    db: DBDep,
+    service: BookingServiceDep,
     pagination: PaginationDep,
     current_user=Depends(get_current_user),
 ):
     """Возвращает список броней текущего авторизованного пользователя."""
     offset = (pagination.page - 1) * pagination.per_page
-    return await db.booking.get_user_bookings(
+    return await service.get_user_bookings(
         user_id=current_user.id,
         limit=pagination.per_page,
         offset=offset,
@@ -37,11 +35,21 @@ async def get_my_bookings(
 )
 async def add_booking(
     booking: BookingCreateSchema,
-    db: DBDep,
+    service: BookingServiceDep,
     current_user=Depends(get_current_user),
 ):
     """Добавление брони. Пользователь может забронировать только себе."""
-    return await BookingService(db).add_booking(booking, current_user)
+    try:
+        return await service.add_booking(booking, current_user)
+    except ObjectIsAlreadyExistsException:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Этот номер уже забронирован на выбранные даты.",
+        )
+    except ObjectNotFoundException:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
+        )
 
 
 @router.delete(
@@ -51,30 +59,18 @@ async def add_booking(
 )
 async def delete_booking(
     booking_id: int,
-    db: DBDep,
+    service: BookingServiceDep,
     current_user=Depends(get_current_user),
 ):
     """Удаляет бронь. Пользователь может удалить только свою бронь."""
     try:
-        booking = await db.booking.get_one_or_none(id=booking_id)
-        if booking is None:
-            raise ObjectNotFoundException
+        await service.delete_booking(booking_id, current_user.id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Бронь не найдена"
         )
-
-    if booking.user_id != current_user.id:
+    except ObjectNotAllowedException:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Вы не можете удалить чужую бронь",
         )
-
-    await db.booking.delete(id=booking_id)
-
-    await booking_delete_publisher.publish(
-        {
-            "booking_id": booking_id,
-            "message": "Бронь успешно отменена",
-        },
-    )

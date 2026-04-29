@@ -11,7 +11,10 @@ from src.config import security
 from src.database import async_session_maker
 from src.enums import ErrorCode, UserRoles
 from src.exceptions import ObjectNotFoundException
+from src.services.booking import BookingService
+from src.services.facilities import FacilitiesService
 from src.services.hotels import HotelsService
+from src.services.rooms import RoomsService
 from src.utils.db_manager import DbManager
 
 RedisDep = Annotated[Redis, Depends(get_redis)]
@@ -30,6 +33,27 @@ def get_hotels_service(db: DBDep, redis: RedisDep) -> HotelsService:
 
 
 HotelsServiceDep = Annotated[HotelsService, Depends(get_hotels_service)]
+
+
+def get_booking_service(db: DBDep) -> BookingService:
+    return BookingService(db)
+
+
+BookingServiceDep = Annotated[BookingService, Depends(get_booking_service)]
+
+
+def get_rooms_service(db: DBDep) -> RoomsService:
+    return RoomsService(db)
+
+
+RoomsServiceDep = Annotated[RoomsService, Depends(get_rooms_service)]
+
+
+def get_facilities_service(db: DBDep) -> FacilitiesService:
+    return FacilitiesService(db)
+
+
+FacilitiesServiceDep = Annotated[FacilitiesService, Depends(get_facilities_service)]
 
 
 class PaginationParams(BaseModel):

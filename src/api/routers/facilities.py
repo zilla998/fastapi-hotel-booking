@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
-from src.database import SessionDep
+from src.api.dependencies import FacilitiesServiceDep
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
-from src.repositories.facilities import FacilitiesRepository
 from src.schemas.facilities import FacilitiesReadSchema, FatilitiesAddSchema
 
 router = APIRouter(prefix="/facilities", tags=["Предметы в номерах"])
@@ -11,9 +10,8 @@ router = APIRouter(prefix="/facilities", tags=["Предметы в номера
 @router.get(
     "", summary="Получение списка предметов", response_model=list[FacilitiesReadSchema]
 )
-async def get_facilities(session: SessionDep):
-    facilities_model = await FacilitiesRepository(session).get_all()
-    return facilities_model
+async def get_facilities(service: FacilitiesServiceDep):
+    return await service.get_all()
 
 
 @router.get(
@@ -21,31 +19,21 @@ async def get_facilities(session: SessionDep):
     summary="Получение конкретного предмета",
     response_model=FacilitiesReadSchema,
 )
-async def get_facility(facility_id: int, session: SessionDep):
+async def get_facility(facility_id: int, service: FacilitiesServiceDep):
     try:
-        facility_model = await FacilitiesRepository(session).get_one_or_none(
-            id=facility_id
-        )
-        if facility_model is None:
-            raise ObjectNotFoundException
+        return await service.get_by_id(facility_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Предмет с таким id не найден"
         )
 
-    return facility_model
-
 
 @router.post("", summary="Добавление предмета")
-async def add_fatility(fatility: FatilitiesAddSchema, session: SessionDep):
+async def add_facility(facility: FatilitiesAddSchema, service: FacilitiesServiceDep):
     try:
-        fatility_model = await FacilitiesRepository(session).add(fatility)
+        return await service.add(facility)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Предмет с таким названием уже существует",
         )
-
-    await session.commit()
-
-    return fatility_model

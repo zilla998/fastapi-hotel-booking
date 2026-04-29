@@ -59,23 +59,12 @@ async def change_hotel(
     service: HotelsServiceDep,
 ):
     try:
-        old_hotel_model = await service.db.hotels.get_one_or_none(id=hotel_id)
-        if old_hotel_model is None:
-            raise ObjectNotFoundException()
+        return await service.update(hotel_id, new_hotel)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Отель с таким id не существует",
         )
-
-    update_hotel = await service.db.hotels.edit(new_hotel, id=hotel_id)
-    await service.db.commit()
-
-    keys = await service.redis.keys("hotels:list:*")
-    if keys:
-        await service.redis.delete(*keys)
-
-    return update_hotel
 
 
 @router.delete(
@@ -86,18 +75,9 @@ async def delete_hotel(
     service: HotelsServiceDep,
 ):
     try:
-        hotel_model = await service.db.hotels.get_one_or_none(id=hotel_id)
-        if hotel_model is None:
-            raise ObjectNotFoundException
+        await service.delete(hotel_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Отель с таким id не существует",
         )
-
-    await service.db.hotels.delete(id=hotel_id)
-    await service.db.commit()
-
-    keys = await service.redis.keys("hotels:list:*")
-    if keys:
-        await service.redis.delete(*keys)

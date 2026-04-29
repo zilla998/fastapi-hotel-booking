@@ -55,9 +55,8 @@ class BaseRepository:
         if model is None:
             raise ObjectNotFoundException
 
-        model = new_model
-        await self.session.commit()
-        await self.session.refresh(model)
+        for key, value in new_model.model_dump().items():
+            setattr(model, key, value)
 
         return self.mapper.map_to_domain_entity_pyd(model)
 
@@ -70,7 +69,6 @@ class BaseRepository:
             raise ObjectNotFoundException
 
         await self.session.delete(model)
-        await self.session.commit()
 
     async def patch_partial(self, data: BaseModel, **filter_by):
         fields = data.model_dump(exclude_unset=True)
@@ -86,8 +84,6 @@ class BaseRepository:
         for key, value in fields.items():
             setattr(model, key, value)
 
-        await self.session.commit()
-        await self.session.refresh(model)
         return self.mapper.map_to_domain_entity_pyd(model)
 
     async def patch(self, column_name: str, new_value: str, **filter_by):
@@ -99,8 +95,6 @@ class BaseRepository:
             raise ObjectNotFoundException
 
         setattr(model, column_name, new_value)
-        await self.session.commit()
-        await self.session.refresh(model)
 
         return self.mapper.map_to_domain_entity_pyd(model)
 

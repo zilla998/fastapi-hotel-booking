@@ -39,7 +39,7 @@ router = APIRouter(prefix="/users", tags=["Пользователи"])
 )
 async def get_users(db: DBDep, pagination: PaginationDep):
     offset = (pagination.page - 1) * pagination.per_page
-    return await db.users.get_all(limit=pagination.per_page, offset=offset)
+    return await UserService.get_all(db, limit=pagination.per_page, offset=offset)
 
 
 @router.get(
@@ -52,7 +52,7 @@ async def get_users(db: DBDep, pagination: PaginationDep):
 )
 async def get_my_profile(db: DBDep, current_user=Depends(get_current_user)):
     """Получение профиля текущего пользователя"""
-    return await db.users.get_one_or_none(id=current_user.id)
+    return await UserService.get_me(db, current_user.id)
 
 
 @router.get(
@@ -65,15 +65,12 @@ async def get_my_profile(db: DBDep, current_user=Depends(get_current_user)):
 )
 async def get_user(user_id: int, db: DBDep):
     try:
-        user = await db.users.get_one_or_none(id=user_id)
-        if user is None:
-            raise ObjectNotFoundException
+        return await UserService.get_by_id(db, user_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": ErrorCode.USER_NOT_FOUND},
         )
-    return user
 
 
 @router.post(
@@ -84,18 +81,17 @@ async def get_user(user_id: int, db: DBDep):
 )
 async def register_user(user: UserCreateSchema, db: DBDep):
     if user.password != user.confirm_password:
-        raise ObjectNotValidException
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": ErrorCode.INVALID_CREDENTIALS},
+        )
     try:
-        user_data = await db.users.get_one_or_none(email=user.email)
-        if user_data:
-            raise ObjectIsAlreadyExistsException
+        return await UserService.create(db, user)
     except ObjectIsAlreadyExistsException:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": ErrorCode.EMAIL_ALREADY_EXISTS},
         )
-
-    return await UserService().create(db, user)
 
 
 @router.patch(
@@ -111,7 +107,7 @@ async def user_profile_patch(
     current_user=Depends(get_current_user),
 ):
     """Редактирование профиля пользователя."""
-    return await db.users.patch_partial(credentials, id=current_user.id)
+    return await UserService.patch_profile(db, current_user.id, credentials)
 
 
 @router.post(
@@ -135,7 +131,7 @@ async def user_change_password(
             detail={"code": ErrorCode.INVALID_CREDENTIALS},
         )
 
-    await UserService().change_password(db, current_user.id, credentials.new_password)
+    await UserService.change_password(db, current_user.id, credentials.new_password)
 
     response.delete_cookie(authx_config.JWT_ACCESS_COOKIE_NAME)
     response.delete_cookie(authx_config.JWT_REFRESH_COOKIE_NAME)
@@ -147,11 +143,7 @@ async def user_change_password(
 @router.post("/login", summary="Вход пользователя")
 async def user_login(user_in: UserLoginSchema, response: Response, db: DBDep):
     try:
-        db_user = await db.users.get_one_or_none(email=user_in.email)
-        if db_user is None or not AuthService().verify_password(
-            user_in.password, db_user.hashed_password
-        ):
-            raise ObjectNotValidException
+        db_user = await AuthService().login(db, user_in.email, user_in.password)
     except ObjectNotValidException:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -184,7 +176,7 @@ async def user_logout(response: Response):
 )
 async def delete_user(user_id: int, db: DBDep):
     try:
-        await db.users.delete(id=user_id)
+        await UserService.delete(db, user_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -196,9 +188,6 @@ async def delete_user(user_id: int, db: DBDep):
 async def refresh(
     response: Response, payload: TokenPayload = Depends(security.refresh_token_required)
 ):
-    # payload.sub = uid который я передаю в ручке логина/регистрации при создании refresh токена
-    new_access = security.create_access_token(uid=payload.sub, fresh=False)
-
+    new_access = AuthService.refresh_access_token(payload.sub)
     security.set_access_cookies(new_access, response=response)
-
     return {"message": "refreshed token"}

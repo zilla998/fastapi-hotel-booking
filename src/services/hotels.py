@@ -33,8 +33,21 @@ class HotelsService:
         result = await self.db.hotels.add(hotel)
         await self.db.commit()
 
+        await self._invalidate_cache()
+        return result
+
+    async def update(self, hotel_id: int, new_hotel):
+        updated = await self.db.hotels.edit(new_hotel, id=hotel_id)
+        await self.db.commit()
+        await self._invalidate_cache()
+        return updated
+
+    async def delete(self, hotel_id: int):
+        await self.db.hotels.delete(id=hotel_id)
+        await self.db.commit()
+        await self._invalidate_cache()
+
+    async def _invalidate_cache(self):
         keys = await self.redis.keys("hotels:list:*")
         if keys:
             await self.redis.delete(*keys)
-
-        return result

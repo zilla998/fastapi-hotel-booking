@@ -1,41 +1,33 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
-from src.api.dependencies import is_admin_required
-from src.database import SessionDep
+from src.api.dependencies import RoomsServiceDep, is_admin_required
 from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotFoundException
-from src.repositories.rooms import RoomsRepository
 from src.schemas.rooms import AddRoomSchema, ChangeRoomSchema, RoomSchema
 
 router = APIRouter(prefix="/rooms", tags=["Отельные номера"])
 
 
 @router.get("", summary="Список номеров", response_model=list[RoomSchema])
-async def get_rooms(session: SessionDep):
-    rooms_model = await RoomsRepository(session).get_all()
-    return rooms_model
+async def get_rooms(service: RoomsServiceDep):
+    return await service.get_all()
 
 
 @router.get("/{room_id}", summary="Получение номера", response_model=RoomSchema)
-async def get_room(room_id: int, session: SessionDep):
+async def get_room(room_id: int, service: RoomsServiceDep):
     try:
-        room_model = await RoomsRepository(session).get_one_or_none(id=room_id)
-        if room_model is None:
-            raise ObjectNotFoundException
+        return await service.get_by_id(room_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
         )
-    return room_model
 
 
 @router.post("", summary="Создание номера", dependencies=[Depends(is_admin_required)])
-async def add_room(new_room: AddRoomSchema, session: SessionDep):
+async def add_room(new_room: AddRoomSchema, service: RoomsServiceDep):
     try:
-        room_model = await RoomsRepository(session).add(new_room)
-        if room_model is None:
-            raise ObjectIsAlreadyExistsException
+        return await service.add(new_room)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -45,42 +37,32 @@ async def add_room(new_room: AddRoomSchema, session: SessionDep):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Такая комната уже существует"
         )
-    await session.commit()
-    return room_model
 
 
 @router.patch(
     "/{room_id}", summary="Изменение номера", dependencies=[Depends(is_admin_required)]
 )
-async def change_room(room_id: int, new_room: ChangeRoomSchema, session: SessionDep):
+async def change_room(room_id: int, new_room: ChangeRoomSchema, service: RoomsServiceDep):
     try:
-        room_model = await RoomsRepository(session).get_one_or_none(id=room_id)
-        if room_model is None:
-            raise ObjectNotFoundException
+        return await service.update(room_id, new_room)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
         )
-    updated_room = await RoomsRepository(session).edit(new_room, id=room_id)
-    return updated_room
 
 
 @router.delete(
     "/{room_id}",
     summary="Удаление комнаты",
     dependencies=[Depends(is_admin_required)],
+    status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_room(room_id: int, session: SessionDep):
+async def delete_room(room_id: int, service: RoomsServiceDep):
     try:
-        room_model = await RoomsRepository(session).get_one_or_none(id=room_id)
-        if room_model is None:
-            raise ObjectNotFoundException
+        await service.delete(room_id)
     except ObjectNotFoundException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
         )
-    await RoomsRepository.delete(id=room_id)
-    await session.commit()
-    return {"success": True}
