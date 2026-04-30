@@ -39,9 +39,7 @@ async def add_room(new_room: AddRoomSchema, service: RoomsServiceDep):
         ) from err
 
 
-@router.patch(
-    "/{room_id}", summary="Изменение номера", dependencies=[Depends(is_admin_required)]
-)
+@router.patch("/{room_id}", summary="Изменение номера", dependencies=[Depends(is_admin_required)])
 async def change_room(room_id: int, new_room: ChangeRoomSchema, service: RoomsServiceDep):
     try:
         return await service.update(room_id, new_room)

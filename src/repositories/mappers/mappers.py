@@ -18,10 +18,12 @@ class UserDataMapper(DataMapper):
     db_model = UsersOrm
     schema = UserInternalSchema
 
+
 class RoomDataMapper(DataMapper):
     db_model = RoomsOrm
     schema = RoomSchema
-    
+
+
 class BookingDataMapper(DataMapper):
     db_model = BookingOrm
     schema = BookingReadSchema

@@ -5,9 +5,7 @@ from src.exceptions import ObjectNotValidException
 
 
 class AuthService:
-    def __init__(
-        self, password_hash: PasswordHash = PasswordHash.recommended()
-    ) -> None:
+    def __init__(self, password_hash: PasswordHash = PasswordHash.recommended()) -> None:
         self.password_hash = password_hash
 
     def verify_password(self, plain_password, hashed_password) -> bool:

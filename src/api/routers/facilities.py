@@ -7,9 +7,7 @@ from src.schemas.facilities import FacilitiesReadSchema, FatilitiesAddSchema
 router = APIRouter(prefix="/facilities", tags=["Предметы в номерах"])
 
 
-@router.get(
-    "", summary="Получение списка предметов", response_model=list[FacilitiesReadSchema]
-)
+@router.get("", summary="Получение списка предметов", response_model=list[FacilitiesReadSchema])
 async def get_facilities(service: FacilitiesServiceDep):
     return await service.get_all()
 

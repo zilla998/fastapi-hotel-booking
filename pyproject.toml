@@ -64,3 +64,83 @@ dependencies = [
     "watchfiles==1.1.1",
     "websockets==16.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "ruff>=0.15.12",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+indent-width = 4
+fix = false
+force-exclude = true
+src = ["src"]
+extend-exclude = [
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "build",
+    "dist",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "F",     # pyflakes
+    "W",     # pycodestyle warnings
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "C90",   # mccabe complexity
+    "C4",    # flake8-comprehensions
+    "SIM",   # flake8-simplify
+    "RET",   # flake8-return
+    "PIE",   # flake8-pie
+    "ASYNC", # flake8-async
+    "RUF",   # Ruff-specific rules
+]
+ignore = [
+    "B008",   # FastAPI intentionally uses Depends()/Query()/Body() calls in defaults.
+    "RUF001", # Russian user-facing strings intentionally contain Cyrillic characters.
+    "RUF002", # Russian docstrings intentionally contain Cyrillic characters.
+    "RUF003", # Russian comments intentionally contain Cyrillic characters.
+    "RUF012", # SQLAlchemy declarative models use non-ClassVar mapped class attributes.
+]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+combine-as-imports = true
+split-on-trailing-comma = true
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"src/migrations/env.py" = [
+    "F401", # Alembic autogenerate needs model imports to register metadata.
+]
+"src/migrations/versions/*.py" = [
+    "ALL", # Alembic revision files are generated artifacts.
+]
+"src/**/__init__.py" = [
+    "F401", # Package exports are allowed in __init__ modules.
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]

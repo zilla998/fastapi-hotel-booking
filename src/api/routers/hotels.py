@@ -34,9 +34,7 @@ async def get_hotel(hotel_id: int, service: HotelsServiceDep):
         ) from err
 
 
-@router.post(
-    "/add_hotel", summary="Добавление отеля", dependencies=[Depends(is_admin_required)]
-)
+@router.post("/add_hotel", summary="Добавление отеля", dependencies=[Depends(is_admin_required)])
 async def add_hotel(
     hotel: HotelsSchema,
     service: HotelsServiceDep,
@@ -50,9 +48,7 @@ async def add_hotel(
         ) from err
 
 
-@router.patch(
-    "/{hotel_id}", summary="Изменение отеля", dependencies=[Depends(is_admin_required)]
-)
+@router.patch("/{hotel_id}", summary="Изменение отеля", dependencies=[Depends(is_admin_required)])
 async def change_hotel(
     hotel_id: int,
     new_hotel: ChangeHotelSchema,
@@ -67,9 +63,7 @@ async def change_hotel(
         ) from err
 
 
-@router.delete(
-    "/{hotel_id}", summary="Удаление отеля", dependencies=[Depends(is_admin_required)]
-)
+@router.delete("/{hotel_id}", summary="Удаление отеля", dependencies=[Depends(is_admin_required)])
 async def delete_hotel(
     hotel_id: int,
     service: HotelsServiceDep,

@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
@@ -18,17 +17,13 @@ class UserReadSchema(BaseModel):
 
 class UserLoginSchema(BaseModel):
     email: EmailStr
-    password: str = Field(
-        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
-    )
+    password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     model_config = ConfigDict(extra="forbid")
 
 
 class UserCreateSchema(UserLoginSchema):
-    confirm_password: str = Field(
-        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
-    )
+    confirm_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     @model_validator(mode="after")
     def validate_passwords_match(self):
@@ -38,15 +33,9 @@ class UserCreateSchema(UserLoginSchema):
 
 
 class UserChangePasswordSchema(BaseModel):
-    current_password: str = Field(
-        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
-    )
-    new_password: str = Field(
-        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
-    )
-    confirm_password: str = Field(
-        min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH
-    )
+    current_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    new_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
+    confirm_password: str = Field(min_length=PASSWORD_MIN_LENGTH, max_length=PASSWORD_MAX_LENGTH)
 
     model_config = ConfigDict(extra="forbid")
 
@@ -69,6 +58,6 @@ class UserInternalSchema(UserReadSchema):
 
 
 class UserPatchProfileSchema(BaseModel):
-    email: Optional[EmailStr] = None
+    email: EmailStr | None = None
 
     model_config = ConfigDict(extra="forbid")

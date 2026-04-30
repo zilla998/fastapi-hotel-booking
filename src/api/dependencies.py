@@ -6,8 +6,7 @@ from pydantic import BaseModel
 from redis.asyncio import Redis
 
 from src.cache import get_redis
-from src.config import config as authx_config
-from src.config import security
+from src.config import config as authx_config, security
 from src.database import async_session_maker
 from src.enums import ErrorCode, UserRoles
 from src.exceptions import ObjectNotFoundException

@@ -8,8 +8,7 @@ from src.api.dependencies import (
     is_admin_required,
     require_access_cookie,
 )
-from src.config import config as authx_config
-from src.config import security
+from src.config import config as authx_config, security
 from src.enums import ErrorCode
 from src.exceptions import (
     ObjectIsAlreadyExistsException,

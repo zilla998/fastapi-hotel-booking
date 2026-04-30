@@ -11,9 +11,7 @@ class UsersOrm(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(
-        String(200), unique=True, index=True, nullable=False
-    )
+    email: Mapped[str] = mapped_column(String(200), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(default=UserRoles.user, nullable=False)
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
