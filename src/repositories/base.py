@@ -40,8 +40,8 @@ class BaseRepository:
             query = insert(self.model).values(**payload).returning(self.model)
             model = await self.session.execute(query)
             return self.mapper.map_to_domain_entity_pyd(model.scalars().one())
-        except IntegrityError:
-            raise ObjectIsAlreadyExistsException
+        except IntegrityError as err:
+            raise ObjectIsAlreadyExistsException from err
 
     async def add_bulk(self, data: list[BaseModel]):
         add_data_stmt = insert(self.model).values([d.model_dump() for d in data])

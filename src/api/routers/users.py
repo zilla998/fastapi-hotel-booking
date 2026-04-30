@@ -69,11 +69,11 @@ async def get_my_profile(db: DBDep, current_user=Depends(get_current_user)):
 async def get_user(user_id: int, db: DBDep):
     try:
         return await UserService.get_by_id(db, user_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": ErrorCode.USER_NOT_FOUND},
-        )
+        ) from err
 
 
 @router.post(
@@ -90,11 +90,11 @@ async def register_user(user: UserCreateSchema, db: DBDep):
         )
     try:
         return await UserService.create(db, user)
-    except ObjectIsAlreadyExistsException:
+    except ObjectIsAlreadyExistsException as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"code": ErrorCode.EMAIL_ALREADY_EXISTS},
-        )
+        ) from err
 
 
 @router.patch(
@@ -147,11 +147,11 @@ async def user_change_password(
 async def user_login(user_in: UserLoginSchema, response: Response, db: DBDep):
     try:
         db_user = await AuthService().login(db, user_in.email, user_in.password)
-    except ObjectNotValidException:
+    except ObjectNotValidException as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": ErrorCode.INVALID_CREDENTIALS},
-        )
+        ) from err
 
     access_token = AuthService.create_access_token(db_user.id)
     refresh_token = AuthService.create_refresh_token(db_user.id)
@@ -180,11 +180,11 @@ async def user_logout(response: Response):
 async def delete_user(user_id: int, db: DBDep):
     try:
         await UserService.delete(db, user_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": ErrorCode.USER_NOT_FOUND},
-        )
+        ) from err
 
 
 @router.post("/refresh")

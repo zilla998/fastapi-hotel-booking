@@ -1,7 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.dependencies import BookingServiceDep, PaginationDep, get_current_user, require_access_cookie
-from src.exceptions import ObjectIsAlreadyExistsException, ObjectNotAllowedException, ObjectNotFoundException
+from src.api.dependencies import (
+    BookingServiceDep,
+    PaginationDep,
+    get_current_user,
+    require_access_cookie,
+)
+from src.exceptions import (
+    ObjectIsAlreadyExistsException,
+    ObjectNotAllowedException,
+    ObjectNotFoundException,
+)
 from src.schemas.booking import BookingCreateSchema, BookingReadSchema
 
 router = APIRouter(prefix="/bookings", tags=["Бронирование"])
@@ -40,15 +49,15 @@ async def add_booking(
     """Добавление брони. Пользователь может забронировать только себе."""
     try:
         return await service.add_booking(booking, current_user)
-    except ObjectIsAlreadyExistsException:
+    except ObjectIsAlreadyExistsException as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Этот номер уже забронирован на выбранные даты.",
-        )
-    except ObjectNotFoundException:
+        ) from err
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Комната не найдена"
-        )
+        ) from err
 
 
 @router.delete(
@@ -64,12 +73,12 @@ async def delete_booking(
     """Удаляет бронь. Пользователь может удалить только свою бронь."""
     try:
         await service.delete_booking(booking_id, current_user.id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Бронь не найдена"
-        )
-    except ObjectNotAllowedException:
+        ) from err
+    except ObjectNotAllowedException as err:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Вы не можете удалить чужую бронь",
-        )
+        ) from err

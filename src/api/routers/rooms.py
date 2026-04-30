@@ -17,26 +17,26 @@ async def get_rooms(service: RoomsServiceDep):
 async def get_room(room_id: int, service: RoomsServiceDep):
     try:
         return await service.get_by_id(room_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
-        )
+        ) from err
 
 
 @router.post("", summary="Создание номера", dependencies=[Depends(is_admin_required)])
 async def add_room(new_room: AddRoomSchema, service: RoomsServiceDep):
     try:
         return await service.add(new_room)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Отель с таким id не существует",
-        )
-    except ObjectIsAlreadyExistsException:
+        ) from err
+    except ObjectIsAlreadyExistsException as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Такая комната уже существует"
-        )
+        ) from err
 
 
 @router.patch(
@@ -45,11 +45,11 @@ async def add_room(new_room: AddRoomSchema, service: RoomsServiceDep):
 async def change_room(room_id: int, new_room: ChangeRoomSchema, service: RoomsServiceDep):
     try:
         return await service.update(room_id, new_room)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
-        )
+        ) from err
 
 
 @router.delete(
@@ -61,8 +61,8 @@ async def change_room(room_id: int, new_room: ChangeRoomSchema, service: RoomsSe
 async def delete_room(room_id: int, service: RoomsServiceDep):
     try:
         await service.delete(room_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Комнаты с таким номером не найдено",
-        )
+        ) from err

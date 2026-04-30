@@ -22,5 +22,5 @@ class RoomsRepository(BaseRepository):
             query = insert(self.model).values(**data.model_dump()).returning(self.model)
             model = await self.session.execute(query)
             return model.scalars().one()
-        except IntegrityError:
-            raise ObjectIsAlreadyExistsException
+        except IntegrityError as err:
+            raise ObjectIsAlreadyExistsException from err

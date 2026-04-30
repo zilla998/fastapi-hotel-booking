@@ -84,21 +84,21 @@ async def get_current_user(
 ):
     try:
         user_id = int(payload.sub)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError) as err:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"code": ErrorCode.UNAUTHORIZED},
-        )
+        ) from err
 
     try:
         db_user = await db.users.get_one_or_none(id=user_id)
         if db_user is None:
             raise ObjectNotFoundException
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"code": ErrorCode.USER_NOT_FOUND},
-        )
+        ) from err
 
     return db_user
 

@@ -50,8 +50,8 @@ class AdminAuth(AuthenticationBackend):
                     # Сохраняем признак аутентификации в сессию для sqladmin
                     request.session.update({"token": access_token})
                     return True
-        except Exception as e:
-            print("verify_access_token error:", repr(e))
+        except Exception as err:
+            print("verify_access_token error:", repr(err))
             return False
 
         return False

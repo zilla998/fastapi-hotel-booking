@@ -28,10 +28,10 @@ async def get_hotels(pagination: PaginationDep, service: HotelsServiceDep):
 async def get_hotel(hotel_id: int, service: HotelsServiceDep):
     try:
         return await service.get_by_id(hotel_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=404, detail=f"Отеля с id: {hotel_id} не существует"
-        )
+        ) from err
 
 
 @router.post(
@@ -43,11 +43,11 @@ async def add_hotel(
 ):
     try:
         return await service.add(hotel)
-    except ObjectIsAlreadyExistsException:
+    except ObjectIsAlreadyExistsException as err:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Отель с таким названием уже существует",
-        )
+        ) from err
 
 
 @router.patch(
@@ -60,11 +60,11 @@ async def change_hotel(
 ):
     try:
         return await service.update(hotel_id, new_hotel)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Отель с таким id не существует",
-        )
+        ) from err
 
 
 @router.delete(
@@ -76,8 +76,8 @@ async def delete_hotel(
 ):
     try:
         await service.delete(hotel_id)
-    except ObjectNotFoundException:
+    except ObjectNotFoundException as err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Отель с таким id не существует",
-        )
+        ) from err
