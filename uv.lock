@@ -559,7 +559,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = "==1.2.1" },
     { name = "python-multipart", specifier = "==0.0.21" },
     { name = "pyyaml", specifier = "==6.0.3" },
-    { name = "redis", extras = ["asyncio"], specifier = ">=7.4.0" },
+    { name = "redis", specifier = "==7.4.0" },
     { name = "rich", specifier = "==14.2.0" },
     { name = "rich-toolkit", specifier = "==0.17.1" },
     { name = "rignore", specifier = "==0.7.6" },

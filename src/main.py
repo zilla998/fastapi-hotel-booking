@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.admin import setup_admin
+from src.api.exception_handlers import register_exception_handlers
 from src.api.routers.bookings import router as booking_router
 from src.api.routers.facilities import (
     router as facilities_router,
@@ -34,6 +35,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+register_exception_handlers(app)
 
 # Добавляем SessionMiddleware, необходимый для sqladmin
 app.add_middleware(SessionMiddleware, secret_key=config.JWT_SECRET_KEY)

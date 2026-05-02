@@ -44,7 +44,7 @@ dependencies = [
     "python-dotenv==1.2.1",
     "python-multipart==0.0.21",
     "pyyaml==6.0.3",
-    "redis[asyncio]>=7.4.0",
+    "redis==7.4.0",
     "rich==14.2.0",
     "rich-toolkit==0.17.1",
     "rignore==0.7.6",
@@ -89,22 +89,22 @@ extend-exclude = [
 
 [tool.ruff.lint]
 select = [
-    "E",     # pycodestyle errors
-    "F",     # pyflakes
-    "W",     # pycodestyle warnings
-    "I",     # isort
-    "UP",    # pyupgrade
-    "B",     # flake8-bugbear
-    "C90",   # mccabe complexity
-    "C4",    # flake8-comprehensions
-    "SIM",   # flake8-simplify
-    "RET",   # flake8-return
-    "PIE",   # flake8-pie
+    "E", # pycodestyle errors
+    "F", # pyflakes
+    "W", # pycodestyle warnings
+    "I", # isort
+    "UP", # pyupgrade
+    "B", # flake8-bugbear
+    "C90", # mccabe complexity
+    "C4", # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RET", # flake8-return
+    "PIE", # flake8-pie
     "ASYNC", # flake8-async
-    "RUF",   # Ruff-specific rules
+    "RUF", # Ruff-specific rules
 ]
 ignore = [
-    "B008",   # FastAPI intentionally uses Depends()/Query()/Body() calls in defaults.
+    "B008", # FastAPI intentionally uses Depends()/Query()/Body() calls in defaults.
     "RUF001", # Russian user-facing strings intentionally contain Cyrillic characters.
     "RUF002", # Russian docstrings intentionally contain Cyrillic characters.
     "RUF003", # Russian comments intentionally contain Cyrillic characters.
