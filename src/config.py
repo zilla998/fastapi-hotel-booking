@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
 
+    KAFKA_BOOTSTRAP_SERVERS: str
+
     JWT_SECRET_KEY: str
 
     @property
