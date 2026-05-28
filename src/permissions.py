@@ -1,5 +1,2 @@
-from abc import ABC
-
-
-class BasePermission(ABC):
+class BasePermission:
     pass

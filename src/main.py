@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     broker.include_router(kafka_router)  # Подключаем Kafka-router
     await broker.start()  # запускаем брокер
     yield
-    await broker.close()  # останавливаем при завершении
+    await broker.stop()  # останавливаем при завершении
     await close_redis()
 
 

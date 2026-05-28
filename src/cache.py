@@ -7,11 +7,13 @@ redis_client: Redis | None = None
 async def init_redis(url: str) -> None:
     """Вызывается при старте приложения."""
     global redis_client
+
     redis_client = Redis.from_url(
         url,
         encoding="utf-8",
         decode_responses=True,  # автоматически декодировать bytes -> str
     )
+    await redis_client.ping()
 
 
 async def close_redis() -> None:
@@ -19,6 +21,7 @@ async def close_redis() -> None:
     global redis_client
     if redis_client:
         await redis_client.aclose()
+        redis_client = None
 
 
 def get_redis() -> Redis:
