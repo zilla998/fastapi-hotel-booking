@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 PASSWORD_MIN_LENGTH = 8
